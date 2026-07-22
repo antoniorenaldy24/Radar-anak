@@ -298,6 +298,26 @@ export function KanbanBoard() {
       .catch((e) => console.error("MapPickerClient load failed:", e));
   }, [hydrated]);
 
+  useEffect(() => {
+    fetch("/api/kasus")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          // If Supabase returned live cards, populate Kanban board
+          const hasAnyCards = Object.values(json.data).some((list: any) => list && list.length > 0);
+          if (hasAnyCards) {
+            setBoard({
+              baru: json.data.baru || [],
+              verifikasi: json.data.verifikasi || [],
+              rujuk: json.data.rujuk || [],
+              selesai: json.data.selesai || [],
+            });
+          }
+        }
+      })
+      .catch((err) => console.error("Failed to fetch live cases for Kanban:", err));
+  }, []);
+
   // Strict Sequential Movement Validator
   const isValidTransition = (from: ColKey, to: ColKey): boolean => {
     if (from === "baru" && to === "verifikasi") return true;
@@ -411,6 +431,13 @@ export function KanbanBoard() {
       [to]: destList,
     });
 
+    // Send PUT request to API /api/kasus to persist status change in Supabase
+    fetch("/api/kasus", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, newStatus: to }),
+    }).catch((err) => console.error("Failed to sync case move to API:", err));
+
     const colTitleMap: Record<ColKey, string> = {
       baru: "Baru Dilaporkan",
       verifikasi: "Diverifikasi",
@@ -505,6 +532,19 @@ export function KanbanBoard() {
       ...board,
       baru: [createdCard, ...board.baru],
     });
+
+    // Send POST request to API /api/kasus to persist new case in Supabase
+    fetch("/api/kasus", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: newCase.name,
+        age: newCase.age,
+        rw: newCase.rw,
+        note: newCase.note,
+        reporter: activeUsername,
+      }),
+    }).catch((err) => console.error("Failed to save new case to API:", err));
 
     addAuditLog(newId, newCase.name, "Laporan kasus baru didaftarkan ke sistem", activeUsername, "NEW");
 
