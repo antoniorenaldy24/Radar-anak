@@ -1,8 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/types/database.types";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  "https://dummy-radar-anak.supabase.co";
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  "dummy-anon-key-radar-2026";
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
@@ -11,7 +16,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
  * to bypass RLS for administrative actions like signup flows and webhooks.
  */
 export const getSupabaseServiceRoleClient = () => {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "dummy-service-role-key";
   
   if (typeof window !== "undefined") {
     throw new Error("Service role client cannot be initialized on the client side.");
