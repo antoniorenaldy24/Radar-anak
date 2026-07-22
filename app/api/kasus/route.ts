@@ -186,3 +186,44 @@ export async function PUT(request: Request) {
     );
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, dbUuid, name } = body;
+
+    if (!id && !dbUuid && !name) {
+      return NextResponse.json(
+        { success: false, error: "ID atau nama kasus wajib diisi untuk menghapus." },
+        { status: 400 }
+      );
+    }
+
+    if (isSupabaseConfigured()) {
+      const isUuid = (val?: string) =>
+        Boolean(val && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(val));
+
+      const targetId = isUuid(dbUuid) ? dbUuid : isUuid(id) ? id : null;
+
+      if (targetId) {
+        const { error } = await (supabase as any).from("kasus").delete().eq("id", targetId);
+        if (error) console.error("Supabase delete by ID error:", error);
+      } else if (name) {
+        // Fallback for short ID: delete matching row by nama_lengkap_asli safely
+        const { error } = await (supabase as any).from("kasus").delete().eq("nama_lengkap_asli", name);
+        if (error) console.error("Supabase delete by name error:", error);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Kasus #${id || name} berhasil dihapus permanen.`,
+      deletedAt: new Date().toISOString(),
+    });
+  } catch (e: any) {
+    return NextResponse.json(
+      { success: false, error: e.message || "Gagal menghapus kasus." },
+      { status: 500 }
+    );
+  }
+}

@@ -576,14 +576,35 @@ export function KanbanBoard() {
     });
   };
 
-  const handleDeleteCase = (id: string, name: string) => {
+  const handleDeleteCase = (id: string, name: string, dbUuid?: string) => {
+    let cardTarget: Card | undefined;
+    (Object.keys(board) as ColKey[]).forEach((col) => {
+      const found = board[col].find((c) => c.id === id);
+      if (found) cardTarget = found;
+    });
+
+    const targetDbUuid = dbUuid || cardTarget?.dbUuid;
+    const targetName = name || cardTarget?.name;
+
     const newBoard = { ...board };
     (Object.keys(newBoard) as ColKey[]).forEach((col) => {
       newBoard[col] = newBoard[col].filter((c) => c.id !== id);
     });
 
     setBoard(newBoard);
-    addAuditLog(id, name, "Laporan tidak valid/palsu dihapus dari sistem", activeUsername, "DELETE");
+
+    // Send HTTP DELETE request to API /api/kasus to delete row in Supabase database
+    fetch("/api/kasus", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id,
+        dbUuid: targetDbUuid,
+        name: targetName,
+      }),
+    }).catch((err) => console.error("Failed to sync case deletion to API:", err));
+
+    addAuditLog(id, name, "Laporan tidak valid/palsu dihapus dari sistem & database", activeUsername, "DELETE");
 
     setShowDeleteModal(null);
     setSelectedCard(null);
@@ -1540,7 +1561,7 @@ export function KanbanBoard() {
               <button onClick={() => setShowDeleteModal(null)} className="border border-ink bg-paper px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-ink">
                 Batal
               </button>
-              <button onClick={() => handleDeleteCase(showDeleteModal.id, showDeleteModal.name)} className="border border-ink bg-sky-600 px-5 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-white shadow-[2px_2px_0_0_#121212] hover:bg-ink">
+              <button onClick={() => handleDeleteCase(showDeleteModal.id, showDeleteModal.name, showDeleteModal.dbUuid)} className="border border-ink bg-sky-600 px-5 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-white shadow-[2px_2px_0_0_#121212] hover:bg-ink">
                 Ya, Hapus Permanen ({activeUsername})
               </button>
             </div>
