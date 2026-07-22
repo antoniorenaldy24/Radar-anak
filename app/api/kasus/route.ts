@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { INITIAL } from "@/components/radar/KanbanBoard";
 import { supabase } from "@/lib/supabase";
+import { generateShortId } from "../lapor/route";
 
 function isSupabaseConfigured(): boolean {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -24,18 +25,26 @@ export async function GET(request: Request) {
       const { data, error } = await query;
 
       if (!error && data && data.length > 0) {
-        // Map DB rows from schema.sql columns to Kanban cards
-        const mappedData = data.map((c: any) => ({
-          id: c.id,
-          name: c.inisial_publik || c.nama_lengkap_asli || "A.N.",
-          age: c.usia || "12 Tahun",
-          rw: c.rw || "RW 04",
-          address: c.alamat_rt_rw || "",
-          note: c.catatan_advokasi || c.akar_masalah || "",
-          reporter: c.pelapor || "Warga",
-          statusAdvokasi: c.status_advokasi || "baru",
-          urgent: !!c.urgent,
-        }));
+        // Map DB rows from schema.sql columns to Kanban cards with short ID and contact info
+        const mappedData = data.map((c: any) => {
+          const rawName = c.nama_lengkap_asli || c.inisial_publik || "Subjek";
+          const shortId = c.id && c.id.length < 10 ? c.id : generateShortId(c.rw, rawName);
+
+          return {
+            id: shortId,
+            dbUuid: c.id,
+            name: rawName,
+            age: c.usia || "12 Tahun",
+            rw: c.rw || "RW 04",
+            address: c.alamat_rt_rw || "",
+            parent: c.nama_wali || "Orang Tua / Wali",
+            phone: c.no_phone || "0812-0000-0000",
+            note: c.catatan_advokasi || c.akar_masalah || "",
+            reporter: c.pelapor || "Warga",
+            statusAdvokasi: c.status_advokasi || "baru",
+            urgent: !!c.urgent,
+          };
+        });
 
         const groupedData = {
           baru: mappedData.filter((c: any) => c.statusAdvokasi === "baru"),
@@ -70,7 +79,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, age, rw, note, reporter } = body;
+    const { name, age, rw, address, note, reporter, phone } = body;
 
     if (!name || !rw) {
       return NextResponse.json(
@@ -79,12 +88,17 @@ export async function POST(request: Request) {
       );
     }
 
+    const shortId = generateShortId(rw, name);
+    const fullAddress = address || `RT 01 / ${rw}, Dukuh Sutorejo, Mulyorejo, Surabaya`;
+
     const newKasus = {
-      id: String(Math.floor(1000 + Math.random() * 9000)),
+      id: shortId,
       name,
       age: age || "12 Tahun",
       rw,
-      address: `RT 01 / ${rw}, Dukuh Sutorejo, Mulyorejo, Surabaya`,
+      address: fullAddress,
+      parent: reporter || "Orang Tua / Wali",
+      phone: phone || "0812-0000-0000",
       note: note || "Laporan baru terdaftar dari warga.",
       reporter: reporter || "Warga / Relawan RW",
       statusAdvokasi: "baru",
@@ -98,7 +112,9 @@ export async function POST(request: Request) {
           nama_lengkap_asli: name,
           usia: age || "12 Tahun",
           rw: rw,
-          alamat_rt_rw: `RT 01 / ${rw}, Dukuh Sutorejo, Mulyorejo, Surabaya`,
+          alamat_rt_rw: fullAddress,
+          nama_wali: reporter || "Orang Tua / Wali",
+          no_phone: phone || "0812-0000-0000",
           akar_masalah: note || "Kendala biaya dan transportasi",
           catatan_advokasi: note || "Laporan baru terdaftar dari warga.",
           status_advokasi: "baru",
@@ -127,7 +143,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, newStatus } = body;
+    const { id, newStatus, dbUuid, name, address, parent, phone } = body;
 
     if (!id || !newStatus) {
       return NextResponse.json(
@@ -137,10 +153,19 @@ export async function PUT(request: Request) {
     }
 
     if (isSupabaseConfigured()) {
-      await (supabase as any)
-        .from("kasus")
-        .update({ status_advokasi: newStatus })
-        .eq("id", id);
+      const updatePayload: any = { status_advokasi: newStatus };
+      if (name) updatePayload.nama_lengkap_asli = name;
+      if (address) updatePayload.alamat_rt_rw = address;
+      if (parent) updatePayload.nama_wali = parent;
+      if (phone) updatePayload.no_phone = phone;
+
+      let query = (supabase as any).from("kasus").update(updatePayload);
+      if (dbUuid) {
+        query = query.eq("id", dbUuid);
+      } else {
+        query = query.eq("id", id);
+      }
+      await query;
     }
 
     return NextResponse.json({

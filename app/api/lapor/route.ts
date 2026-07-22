@@ -9,10 +9,24 @@ function isSupabaseConfigured(): boolean {
   return Boolean(url && key);
 }
 
+export function generateShortId(rwStr: string, nameStr: string): string {
+  const rwMatch = (rwStr || "RW 04").match(/\d+/);
+  const rwNum = rwMatch ? rwMatch[0].padStart(2, "0") : "04";
+  const words = (nameStr || "Subjek").trim().split(/\s+/);
+  let initials = "";
+  if (words.length === 1) {
+    initials = words[0].slice(0, 2).toUpperCase();
+  } else {
+    initials = words.slice(0, 2).map((w) => w[0]?.toUpperCase() || "").join("");
+  }
+  const randNum = Math.floor(10 + Math.random() * 90);
+  return `${rwNum}-${initials}`;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, rw, note, reporter } = body;
+    const { name, age, rw, address, note, reporter, phone } = body;
 
     if (!name || !rw) {
       return NextResponse.json(
@@ -21,16 +35,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const ticketId = "RADAR-TK-" + Math.floor(100000 + Math.random() * 900000);
+    const customShortId = generateShortId(rw, name);
+    const fullAddress = address ? `${address}, ${rw}, Dukuh Sutorejo, Mulyorejo, Surabaya` : `RT 01 / ${rw}, Dukuh Sutorejo, Mulyorejo, Surabaya`;
 
     if (isSupabaseConfigured()) {
       const { error } = await (supabase as any).from("kasus").insert([
         {
           inisial_publik: name.length > 2 ? name.substring(0, 1) + "." + name.substring(name.length - 1) : name,
           nama_lengkap_asli: name,
-          usia: "12 Tahun",
+          usia: age || "12 Tahun",
           rw: rw,
-          alamat_rt_rw: `RT 01 / ${rw}, Dukuh Sutorejo, Mulyorejo, Surabaya`,
+          alamat_rt_rw: fullAddress,
+          nama_wali: reporter || "Wali / Pelapor",
+          no_phone: phone || "-",
           akar_masalah: note || "Laporan temuan warga dari portal relawan.",
           catatan_advokasi: note || "Laporan temuan warga dari portal relawan.",
           status_advokasi: "baru",
@@ -45,8 +62,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      ticketId,
-      message: `Laporan berhasil terdaftar di database. Nomor tiket Anda: ${ticketId}`,
+      ticketId: customShortId,
+      message: `Laporan berhasil terdaftar di database. Nomor tiket Anda: ${customShortId}`,
       timestamp: new Date().toISOString(),
     });
   } catch (e: any) {

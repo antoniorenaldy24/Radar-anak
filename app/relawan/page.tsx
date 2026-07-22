@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ShieldCheck, HeartHandshake, FileText, Send, CheckCircle2, AlertTriangle, BookOpen } from "lucide-react";
+import { ArrowLeft, ShieldCheck, HeartHandshake, FileText, Send, CheckCircle2, AlertTriangle, BookOpen, MapPin, User, Phone as PhoneIcon } from "lucide-react";
 import { Footer } from "@/components/radar/Footer";
 
 const CODE_OF_ETHICS = [
   {
     title: "1. Perlindungan Identitas Publik",
-    body: "Seluruh nama anak wajib disamarkan di tampilan publik menjadi inisial (misal: S.W.). Dilarang mengambil foto wajah anak secara terbuka tanpa izin tertulis dari orang tua/wali.",
+    body: "Seluruh nama anak disamarkan di tampilan publik menjadi inisial (misal: S.W.). Nama lengkap asli tersimpan aman untuk keperluan verifikasi door-to-door oleh Tim KKN & Operator.",
   },
   {
     title: "2. Bebas Stigma & Empati Pendampingan",
@@ -22,8 +22,9 @@ const CODE_OF_ETHICS = [
 
 export default function RelawanPage() {
   const [namaChild, setNamaChild] = useState("");
-  const [usiaChild, setUsiaChild] = useState("12 Tahun");
+  const [usiaChild, setUsiaChild] = useState("12 Tahun (SMP)");
   const [rw, setRw] = useState("RW 04");
+  const [alamatLengkap, setAlamatLengkap] = useState("");
   const [catatan, setCatatan] = useState("");
   const [pelapor, setPelapor] = useState("");
   const [phone, setPhone] = useState("");
@@ -34,7 +35,7 @@ export default function RelawanPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!namaChild || !pelapor) return;
+    if (!namaChild || !pelapor || !alamatLengkap) return;
 
     setLoading(true);
     try {
@@ -45,14 +46,16 @@ export default function RelawanPage() {
           name: namaChild,
           age: usiaChild,
           rw,
+          address: alamatLengkap,
           note: catatan,
-          reporter: `${pelapor} (${phone || "Tanpa No. WA"})`,
+          reporter: pelapor,
+          phone: phone || "-",
         }),
       });
 
       const data = await res.json();
       if (data.success) {
-        setTicketId(data.ticketId || "RADAR-TK-" + Math.floor(100000 + Math.random() * 900000));
+        setTicketId(data.ticketId || "04-RJ");
         setSubmitted(true);
       }
     } catch (e) {
@@ -94,7 +97,7 @@ export default function RelawanPage() {
             Laporkan Temuan Anak Putus Sekolah.
           </h1>
           <p className="mt-4 text-base sm:text-lg text-ink/70 max-w-2xl font-sans leading-relaxed">
-            Panduan Kode Etik SOP Investigasi dan Formulir Pelaporan Kasus Temuan Anak Putus Sekolah / Rawan Putus Sekolah di Wilayah Kelurahan Manggarai.
+            Panduan Kode Etik SOP Investigasi dan Formulir Pelaporan Kasus Temuan Anak Putus Sekolah / Rawan Putus Sekolah di Wilayah Dukuh Sutorejo, Kec. Mulyorejo, Surabaya.
           </p>
         </div>
       </section>
@@ -157,17 +160,19 @@ export default function RelawanPage() {
               <h3 className="font-display text-2xl font-extrabold text-ink">
                 Laporan Temuan Berhasil Terdaftar!
               </h3>
-              <div className="inline-block border border-ink bg-paper px-4 py-2 font-mono text-xs font-bold text-signal">
-                TIKET RESMI: {ticketId}
+              <div className="inline-block border border-ink bg-paper px-4 py-2 font-mono text-sm font-bold text-signal">
+                ID ARSIP KASUS: #{ticketId}
               </div>
               <p className="max-w-md mx-auto text-xs sm:text-sm text-ink/70 leading-relaxed font-sans">
-                Laporan temuan subjek <strong>{namaChild}</strong> ({rw}) telah resmi masuk ke database. Operator Kelurahan akan langsung melakukan verifikasi lapangan.
+                Laporan temuan subjek <strong>{namaChild}</strong> ({rw}) telah resmi masuk ke database. Tim KKN &amp; Operator Kelurahan akan langsung mendatangi lokasi untuk verifikasi.
               </p>
               <button
                 onClick={() => {
                   setSubmitted(false);
                   setNamaChild("");
+                  setAlamatLengkap("");
                   setCatatan("");
+                  setPhone("");
                 }}
                 className="mt-4 border border-ink bg-paper px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-ink hover:bg-ink hover:text-paper transition-all cursor-pointer shadow-[2px_2px_0_0_#121212]"
               >
@@ -179,16 +184,19 @@ export default function RelawanPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-ink/70 mb-2">
-                    Nama Subjek Anak *
+                    Nama Lengkap Asli Subjek Anak *
                   </label>
                   <input
                     type="text"
                     required
                     value={namaChild}
                     onChange={(e) => setNamaChild(e.target.value)}
-                    placeholder="Contoh: Ahmad Rizky"
+                    placeholder="Masukkan nama lengkap asli (Contoh: Rian Ramadhan)"
                     className="w-full border border-ink bg-paper px-3.5 py-2.5 font-mono text-xs text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-signal"
                   />
+                  <p className="mt-1 text-[9px] text-ink/50 font-mono">
+                    *Tulis nama lengkap agar Tim KKN/Operator dapat melakukan survei door-to-door dengan akurat.
+                  </p>
                 </div>
 
                 <div>
@@ -210,7 +218,7 @@ export default function RelawanPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-ink/70 mb-2">
-                    Lokasi Wilayah RW *
+                    Wilayah RW *
                   </label>
                   <select
                     value={rw}
@@ -227,30 +235,47 @@ export default function RelawanPage() {
 
                 <div>
                   <label className="block font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-ink/70 mb-2">
-                    Nama Pelapor / RT / Kader *
+                    Alamat Lengkap (RT / Jalan / Gang / No. Rumah) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={alamatLengkap}
+                    onChange={(e) => setAlamatLengkap(e.target.value)}
+                    placeholder="Contoh: RT 03 / RW 04 Gang I No. 12, Sutorejo"
+                    className="w-full border border-ink bg-paper px-3.5 py-2.5 font-mono text-xs text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-signal"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-ink/70 mb-2">
+                    Nama Pelapor / Kontak Wali *
                   </label>
                   <input
                     type="text"
                     required
                     value={pelapor}
                     onChange={(e) => setPelapor(e.target.value)}
-                    placeholder="Contoh: Pak RT 04 / Relawan"
+                    placeholder="Contoh: Pak RT 04 / Rahmad (Ayah)"
                     className="w-full border border-ink bg-paper px-3.5 py-2.5 font-mono text-xs text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-signal"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-ink/70 mb-2">
-                  Nomor WhatsApp Pelapor (Opsional)
-                </label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="0812-3456-7890"
-                  className="w-full border border-ink bg-paper px-3.5 py-2.5 font-mono text-xs text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-signal"
-                />
+                <div>
+                  <label className="block font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-ink/70 mb-2">
+                    Nomor WhatsApp / Telepon Pelapor *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="Contoh: 0812-3456-7890"
+                    className="w-full border border-ink bg-paper px-3.5 py-2.5 font-mono text-xs text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-signal"
+                  />
+                </div>
               </div>
 
               <div>

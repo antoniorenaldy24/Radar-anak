@@ -85,27 +85,29 @@ export const KATEGORI_ALASAN_OPTIONS = [
 export const INITIAL: Record<ColKey, Card[]> = {
   baru: [
     {
-      id: "1045",
+      id: "03-LH",
       name: "Lukman Hakim",
       age: "12 Tahun",
       rw: "RW 03",
       note: "Terlihat mengumpulkan barang bekas jam sekolah bersama saudaranya.",
       reporter: "RT04",
+      parent: "Bambang (Ayah)",
       phone: "0812-9988-7711",
     },
     {
-      id: "1044",
+      id: "04-PL",
       name: "Putri Lestari",
       age: "15 Tahun",
       rw: "RW 04",
       note: "Berhenti sekolah pasca lulus SMP karena kendala ongkos & biaya transportasi.",
       reporter: "RW09",
+      parent: "Suratmi (Ibu)",
       phone: "0857-1122-3344",
     },
   ],
   verifikasi: [
     {
-      id: "1043",
+      id: "04-AR",
       name: "Anisa Rahmawati",
       age: "14 Tahun",
       nik: "3174086101100004",
@@ -122,7 +124,7 @@ export const INITIAL: Record<ColKey, Card[]> = {
       lng: 112.7890,
     },
     {
-      id: "1042",
+      id: "07-DK",
       name: "Deni Kurniawan",
       age: "10 Tahun",
       nik: "3174082205140002",
@@ -141,7 +143,7 @@ export const INITIAL: Record<ColKey, Card[]> = {
   ],
   rujuk: [
     {
-      id: "1039",
+      id: "04-SW",
       name: "Siti Wulandari",
       age: "13 Tahun",
       nik: "3174085107110001",
@@ -162,7 +164,7 @@ export const INITIAL: Record<ColKey, Card[]> = {
   ],
   selesai: [
     {
-      id: "0988",
+      id: "03-BS",
       name: "Budi Santoso Jr.",
       age: "11 Tahun",
       nik: "3174081902130009",
@@ -260,9 +262,11 @@ export function KanbanBoard() {
   // Modal Step 1: Verification Modal (`baru` -> `verifikasi`)
   const [showVerifyModal, setShowVerifyModal] = useState<{ card: Card; targetCol: ColKey } | null>(null);
   const [verifyForm, setVerifyForm] = useState({
+    name: "",
     nik: "",
     address: "",
     parent: "",
+    phone: "",
     kategoriAlasan: KATEGORI_ALASAN_OPTIONS[0],
     statusDokumen: "KK Lengkap, Berkas Terverifikasi",
     urgent: false,
@@ -380,9 +384,11 @@ export function KanbanBoard() {
 
     if (from === "baru" && to === "verifikasi") {
       setVerifyForm({
+        name: targetCard.name,
         nik: targetCard.nik || "317408" + Math.floor(1000000000 + Math.random() * 9000000000),
         address: targetCard.address || `RT 02 / ${targetCard.rw}, Dukuh Sutorejo, Mulyorejo, Surabaya`,
-        parent: targetCard.parent || "Orang Tua / Wali",
+        parent: targetCard.parent || targetCard.reporter || "Orang Tua / Wali",
+        phone: targetCard.phone || "0812-0000-0000",
         kategoriAlasan: targetCard.kategoriAlasan || KATEGORI_ALASAN_OPTIONS[0],
         statusDokumen: targetCard.statusDokumen || "Dokumen Kependudukan Lengkap",
         urgent: !!targetCard.urgent,
@@ -435,7 +441,14 @@ export function KanbanBoard() {
     fetch("/api/kasus", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, newStatus: to }),
+      body: JSON.stringify({
+        id,
+        newStatus: to,
+        name: extraData?.name,
+        address: extraData?.address,
+        parent: extraData?.parent,
+        phone: extraData?.phone,
+      }),
     }).catch((err) => console.error("Failed to sync case move to API:", err));
 
     const colTitleMap: Record<ColKey, string> = {
@@ -466,9 +479,11 @@ export function KanbanBoard() {
     if (!showVerifyModal) return;
 
     moveCardDirect(showVerifyModal.card.id, "baru", "verifikasi", {
+      name: verifyForm.name,
       nik: verifyForm.nik,
       address: verifyForm.address,
       parent: verifyForm.parent,
+      phone: verifyForm.phone,
       kategoriAlasan: verifyForm.kategoriAlasan,
       statusDokumen: verifyForm.statusDokumen,
       urgent: verifyForm.urgent,
@@ -806,9 +821,22 @@ export function KanbanBoard() {
                         </button>
                       )}
 
-                      <div className="mt-3 flex items-center justify-between border-t border-ledger pt-2 font-mono text-[9px] uppercase tracking-widest text-ink/50">
+                      <div className="mt-2.5 border-t border-ledger/80 pt-2 font-mono text-[9px] text-ink/80 space-y-0.5">
+                        <div className="flex items-center gap-1 font-bold text-ink">
+                          <User className="size-2.5 text-sky-600 shrink-0" />
+                          <span className="truncate">Wali/Pelapor: {c.parent || c.reporter}</span>
+                        </div>
+                        {c.phone && (
+                          <div className="flex items-center gap-1 text-emerald-800 font-bold">
+                            <Phone className="size-2.5 text-emerald-600 shrink-0" />
+                            <span>WA: {c.phone}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-2 flex items-center justify-between border-t border-ledger pt-2 font-mono text-[9px] uppercase tracking-widest text-ink/50">
                         <span className="flex items-center gap-1 font-bold text-ink/70">
-                          <User className="size-2.5 text-sky-600" /> {c.reporter}
+                          Pelapor: {c.reporter}
                         </span>
                         <span className="font-bold text-ink hover:underline">
                           Detail Berkas &rarr;
@@ -1105,6 +1133,20 @@ export function KanbanBoard() {
             </p>
 
             <form onSubmit={handleVerifySubmit} className="space-y-4 font-mono text-xs">
+              <div className="border-2 border-sky-600 bg-sky-50 p-3">
+                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-sky-950 flex items-center gap-1">
+                  ✏️ Nama Lengkap Subjek Anak (Edit / Lengkapi Hasil Survei) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={verifyForm.name}
+                  onChange={(e) => setVerifyForm({ ...verifyForm, name: e.target.value })}
+                  placeholder="Ketik/koreksi nama lengkap asli anak..."
+                  className="w-full border border-ink bg-white p-2.5 text-xs text-ink font-bold focus:outline-none focus:ring-2 focus:ring-sky-600"
+                />
+              </div>
+
               <div className="border-2 border-amber-500 bg-amber-50 p-3">
                 <label className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-amber-950 flex items-center gap-1">
                   🏷️ Kategori Utama Alasan Putus Sekolah * (Untuk Grafik Transparansi)
@@ -1122,18 +1164,34 @@ export function KanbanBoard() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-ink/70">
-                  NIK Subjek Anak (16 Digit) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={verifyForm.nik}
-                  onChange={(e) => setVerifyForm({ ...verifyForm, nik: e.target.value })}
-                  placeholder="317408..."
-                  className="w-full border border-ink bg-paper p-2.5 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-sky-600"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-ink/70">
+                    NIK Subjek Anak (16 Digit) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={verifyForm.nik}
+                    onChange={(e) => setVerifyForm({ ...verifyForm, nik: e.target.value })}
+                    placeholder="317408..."
+                    className="w-full border border-ink bg-paper p-2.5 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-sky-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-ink/70">
+                    Status Dokumen Kependudukan *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={verifyForm.statusDokumen}
+                    onChange={(e) => setVerifyForm({ ...verifyForm, statusDokumen: e.target.value })}
+                    placeholder="Dokumen Kependudukan Lengkap"
+                    className="w-full border border-ink bg-paper p-2.5 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-sky-600"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1153,14 +1211,14 @@ export function KanbanBoard() {
 
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-ink/70">
-                    Status Dokumen Kependudukan *
+                    Nomor WhatsApp / Telepon Wali *
                   </label>
                   <input
-                    type="text"
+                    type="tel"
                     required
-                    value={verifyForm.statusDokumen}
-                    onChange={(e) => setVerifyForm({ ...verifyForm, statusDokumen: e.target.value })}
-                    placeholder="Dokumen Kependudukan Lengkap"
+                    value={verifyForm.phone}
+                    onChange={(e) => setVerifyForm({ ...verifyForm, phone: e.target.value })}
+                    placeholder="0812-3456-7890"
                     className="w-full border border-ink bg-paper p-2.5 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-sky-600"
                   />
                 </div>
@@ -1560,23 +1618,24 @@ export function KanbanBoard() {
                 </div>
               )}
 
-              {selectedCard.address && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="border border-ink/15 p-3 bg-paper">
-                    <div className="font-mono text-[9px] uppercase tracking-widest text-ink/50 flex items-center gap-1 mb-1">
-                      <Home className="size-3 text-sky-600" /> Alamat Rumah Lengkap
-                    </div>
-                    <div className="font-semibold text-ink">{selectedCard.address}</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="border border-ink/15 p-3 bg-paper">
+                  <div className="font-mono text-[9px] uppercase tracking-widest text-ink/50 flex items-center gap-1 mb-1">
+                    <Home className="size-3 text-sky-600" /> Alamat Rumah Lengkap
                   </div>
+                  <div className="font-semibold text-ink">{selectedCard.address || "RT/RW Belum Diverifikasi"}</div>
+                </div>
 
-                  <div className="border border-ink/15 p-3 bg-paper">
-                    <div className="font-mono text-[9px] uppercase tracking-widest text-ink/50 flex items-center gap-1 mb-1">
-                      <Phone className="size-3 text-sky-600" /> Kontak Wali / Pelapor
-                    </div>
-                    <div className="font-mono font-bold text-ink">{selectedCard.phone}</div>
+                <div className="border border-ink/15 p-3 bg-paper">
+                  <div className="font-mono text-[9px] uppercase tracking-widest text-ink/50 flex items-center gap-1 mb-1">
+                    <Phone className="size-3 text-sky-600" /> Kontak Wali / Pelapor
+                  </div>
+                  <div className="font-mono font-bold text-ink">
+                    {selectedCard.parent ? `${selectedCard.parent} — ` : ""}
+                    {selectedCard.phone || "Tidak Ada Telepon"}
                   </div>
                 </div>
-              )}
+              </div>
 
               {selectedCard.lat && selectedCard.lng && (
                 <div className="border border-emerald-300 bg-emerald-50 p-3 font-mono text-[10px] uppercase flex items-center justify-between">
