@@ -2,13 +2,20 @@ import { NextResponse } from "next/server";
 import { INITIAL } from "@/components/radar/KanbanBoard";
 import { supabase } from "@/lib/supabase";
 
+function isSupabaseConfigured(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return Boolean(url && key);
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const rw = searchParams.get("rw");
 
   try {
-    // If Supabase URL environment variable is provided, query real Supabase DB
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    if (isSupabaseConfigured()) {
       let query = (supabase as any).from("kasus").select("*");
       if (rw && rw !== "ALL") {
         query = query.eq("wilayah_rw", rw);
@@ -17,7 +24,6 @@ export async function GET(request: Request) {
       const { data, error } = await query;
 
       if (!error && data && data.length > 0) {
-        // Map DB rows to Kanban cards
         const mappedData = data.map((c: any) => ({
           id: c.id,
           name: c.inisial_anak || c.name || "A.N.",
@@ -51,7 +57,7 @@ export async function GET(request: Request) {
     console.error("Supabase fetch error, fallback to initial:", err);
   }
 
-  // Fallback to INITIAL dataset if Supabase is initializing or empty
+  // Fallback to INITIAL dataset if Supabase table is initializing or empty
   return NextResponse.json({
     success: true,
     data: INITIAL,
@@ -91,7 +97,7 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString(),
     };
 
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    if (isSupabaseConfigured()) {
       await (supabase as any).from("kasus").insert([
         {
           id: newId,
@@ -131,7 +137,7 @@ export async function PUT(request: Request) {
       );
     }
 
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    if (isSupabaseConfigured()) {
       await (supabase as any)
         .from("kasus")
         .update({ status: newStatus })
