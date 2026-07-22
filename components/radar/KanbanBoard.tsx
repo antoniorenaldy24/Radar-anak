@@ -275,6 +275,11 @@ export function KanbanBoard() {
   const [showDeleteModal, setShowDeleteModal] = useState<Card | null>(null);
   const [showProofViewerModal, setShowProofViewerModal] = useState<Card | null>(null);
 
+  const openProofViewer = (card: Card) => {
+    setSelectedCard(null);
+    setShowProofViewerModal(card);
+  };
+
   // Visual Interactive Map Picker Sub-Modal State
   const [showVisualMapPickerModal, setShowVisualMapPickerModal] = useState(false);
 
@@ -472,18 +477,34 @@ export function KanbanBoard() {
       [to]: destList,
     });
 
-    // Send PUT request to API /api/kasus to persist status change in Supabase
+    // Send PUT request to API /api/kasus to persist status change & full fields in Supabase
     fetch("/api/kasus", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id,
-        dbUuid: moved.dbUuid,
+        dbUuid: updatedCard.dbUuid,
         newStatus: to,
-        name: extraData?.name || moved.name,
-        address: extraData?.address || moved.address,
-        parent: extraData?.parent || moved.parent,
-        phone: extraData?.phone || moved.phone,
+        name: updatedCard.name,
+        age: updatedCard.age,
+        rw: updatedCard.rw,
+        address: updatedCard.address,
+        parent: updatedCard.parent,
+        phone: updatedCard.phone,
+        note: updatedCard.note,
+        reporter: updatedCard.reporter,
+        catatanAdvokasi: updatedCard.note,
+        catatanOperator: updatedCard.catatanOperator,
+        rujukan: updatedCard.rujukan,
+        buktiUrl: updatedCard.buktiUrl,
+        statusDokumen: updatedCard.statusDokumen,
+        kategoriAlasan: updatedCard.kategoriAlasan,
+        nik: updatedCard.nik,
+        alasanDitutup: updatedCard.alasanDitutup,
+        fotoDokumentasiSelesai: updatedCard.fotoDokumentasiSelesai,
+        urgent: updatedCard.urgent,
+        lat: updatedCard.lat,
+        lng: updatedCard.lng,
       }),
     }).catch((err) => console.error("Failed to sync case move to API:", err));
 
@@ -1726,9 +1747,19 @@ export function KanbanBoard() {
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          // Revoke old object URL to avoid memory leak
-                          if (proofFile?.objectUrl) URL.revokeObjectURL(proofFile.objectUrl);
-                          setProofFile({ name: file.name, objectUrl: URL.createObjectURL(file) });
+                          if (file.type.startsWith("image/")) {
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              const base64Url = event.target?.result as string;
+                              setProofFile({ name: file.name, objectUrl: base64Url });
+                            };
+                            reader.readAsDataURL(file);
+                          } else {
+                            if (proofFile?.objectUrl && proofFile.objectUrl.startsWith("blob:")) {
+                              URL.revokeObjectURL(proofFile.objectUrl);
+                            }
+                            setProofFile({ name: file.name, objectUrl: URL.createObjectURL(file) });
+                          }
                         }
                       }}
                       className="w-full border border-ink bg-paper p-2 text-xs text-ink cursor-pointer"
@@ -1736,8 +1767,8 @@ export function KanbanBoard() {
                     {proofFile && (
                       <div className="mt-1 font-mono text-[10px] text-sky-600 font-bold flex items-center gap-1.5">
                         ✓ File Terpilih: {proofFile.name}
-                        {/\.(jpg|jpeg|png|gif|webp)$/i.test(proofFile.name) && (
-                          <span className="bg-sky-100 text-sky-700 px-1.5 py-0.5 text-[8px] uppercase">GAMBAR — PRATINJAU TERSEDIA</span>
+                        {(proofFile.objectUrl.startsWith("data:image/") || /\.(jpg|jpeg|png|gif|webp)$/i.test(proofFile.name)) && (
+                          <span className="bg-sky-100 text-sky-700 px-1.5 py-0.5 text-[8px] uppercase">GAMBAR — PERSISTEN TERSEDIA</span>
                         )}
                       </div>
                     )}
@@ -1979,10 +2010,10 @@ export function KanbanBoard() {
         </div>
       )}
 
-      {/* MODAL DETAIL RESMI DOSSIER OPERATOR */}
+      {/* MODAL DETAIL RESMI DOSSIER OPERATOR (2-COLUMN GRID LEGA LAYOUT) */}
       {selectedCard && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/70 backdrop-blur-sm p-4 animate-[fade-up_0.2s_ease-out]">
-          <div className="relative w-full max-w-3xl border-2 border-ink bg-white p-6 sm:p-8 shadow-[12px_12px_0_0_#0284c7] max-h-[90vh] overflow-y-auto">
+          <div className="relative w-full max-w-4xl border-2 border-ink bg-white p-6 sm:p-8 shadow-[14px_14px_0_0_#0284c7] max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-ink pb-4 mb-6">
               <div className="flex items-center gap-2">
                 <div className="grid size-7 place-items-center bg-sky-600 text-white">
@@ -2003,314 +2034,313 @@ export function KanbanBoard() {
               </button>
             </div>
 
-            <div className="space-y-4 font-sans text-xs">
-              <div className="bg-[#efeee9] p-4 border border-ink/15 space-y-2">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="font-mono text-[9px] uppercase tracking-widest text-ink/50">
-                      Nama Subjek Anak
+            {/* ─── 2-COLUMN GRID CONTAINER ─── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 font-sans text-xs">
+
+              {/* ─── COLUMN LEFT: REKAP DATA SUBJEK ─── */}
+              <div className="space-y-4">
+                <div className="bg-[#efeee9] p-4 border border-ink/15 space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-mono text-[9px] uppercase tracking-widest text-ink/50">
+                        Nama Subjek Anak
+                      </div>
+                      <div className="font-display text-2xl font-black text-ink">
+                        {selectedCard.name}
+                      </div>
                     </div>
-                    <div className="font-display text-2xl font-black text-ink">
-                      {selectedCard.name}
+                    <div className="flex items-center gap-2">
+                      {selectedCard.urgent && (
+                        <span className="bg-signal text-white px-2 py-0.5 font-mono text-[9px] font-bold uppercase">
+                          Prioritas Tinggi
+                        </span>
+                      )}
+                      <span className="bg-ink text-paper px-2 py-1 font-mono text-[10px] font-bold">
+                        {selectedCard.age}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {selectedCard.urgent && (
-                      <span className="bg-signal text-white px-2 py-0.5 font-mono text-[9px] font-bold uppercase">
-                        Prioritas Tinggi
-                      </span>
-                    )}
-                    <span className="bg-ink text-paper px-2 py-1 font-mono text-[10px] font-bold">
-                      {selectedCard.age}
-                    </span>
+
+                  {selectedCard.nik && (
+                    <div className="grid grid-cols-2 gap-4 border-t border-ink/10 pt-3 mt-2 font-mono text-[10px] uppercase">
+                      <div>
+                        <span className="text-ink/50 block">NIK Subjek:</span>
+                        <span className="font-bold text-ink">{selectedCard.nik}</span>
+                      </div>
+                      <div>
+                        <span className="text-ink/50 block">Orang Tua / Wali:</span>
+                        <span className="font-bold text-ink">{selectedCard.parent}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between border border-ink/15 bg-paper p-3 font-mono text-[10px] uppercase">
+                  <span className="font-bold text-ink/70">PRIORITAS PENANGANAN:</span>
+                  <button
+                    onClick={() => toggleCardUrgent(selectedCard)}
+                    className={`inline-flex items-center gap-1.5 border px-3 py-1 font-bold tracking-wider cursor-pointer ${
+                      selectedCard.urgent
+                        ? "bg-signal text-white border-signal"
+                        : "bg-white text-ink border-ink hover:bg-ink hover:text-paper"
+                    }`}
+                  >
+                    <Flag className="size-3" />
+                    <span>{selectedCard.urgent ? "PRIORITAS TINGGI (URGENT)" : "+ TANDAI PRIORITAS"}</span>
+                  </button>
+                </div>
+
+                {selectedCard.kategoriAlasan && (
+                  <div className="border-l-4 border-amber-500 bg-amber-50 p-3 font-mono text-[10px] uppercase">
+                    <span className="font-bold text-amber-900 block">Kategori Utama Alasan Putus Sekolah:</span>
+                    <span className="text-ink font-bold">{selectedCard.kategoriAlasan}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="border border-ink/15 p-3 bg-paper">
+                    <div className="font-mono text-[9px] uppercase tracking-widest text-ink/50 flex items-center gap-1 mb-1">
+                      <Home className="size-3 text-sky-600" /> Alamat Rumah Lengkap
+                    </div>
+                    <div className="font-semibold text-ink">{selectedCard.address || "RT/RW Belum Diverifikasi"}</div>
+                  </div>
+
+                  <div className="border border-ink/15 p-3 bg-paper">
+                    <div className="font-mono text-[9px] uppercase tracking-widest text-ink/50 flex items-center gap-1 mb-1">
+                      <Phone className="size-3 text-sky-600" /> Kontak Wali / Pelapor
+                    </div>
+                    <div className="font-mono font-bold text-ink">
+                      {selectedCard.parent ? `${selectedCard.parent} — ` : ""}
+                      {selectedCard.phone || "Tidak Ada Telepon"}
+                    </div>
                   </div>
                 </div>
 
-                {selectedCard.nik && (
-                  <div className="grid grid-cols-2 gap-4 border-t border-ink/10 pt-3 mt-2 font-mono text-[10px] uppercase">
-                    <div>
-                      <span className="text-ink/50 block">NIK Subjek:</span>
-                      <span className="font-bold text-ink">{selectedCard.nik}</span>
+                {selectedCard.lat && selectedCard.lng && (
+                  <div className="border border-emerald-300 bg-emerald-50 p-3 font-mono text-[10px] uppercase flex items-center justify-between">
+                    <span className="font-bold text-emerald-900 flex items-center gap-1">
+                      <MapPin className="size-3.5 text-emerald-600" /> KOORDINAT TERPASANG DI PETA:
+                    </span>
+                    <span className="font-bold text-emerald-950">{selectedCard.lat.toFixed(6)}, {selectedCard.lng.toFixed(6)}</span>
+                  </div>
+                )}
+
+                {selectedCard.statusDokumen && (
+                  <div className="border-l-4 border-sky-600 bg-sky-50 p-3 font-mono text-[10px] uppercase">
+                    <span className="font-bold text-sky-900 block">Status Dokumen Kependudukan:</span>
+                    <span className="text-ink">{selectedCard.statusDokumen}</span>
+                  </div>
+                )}
+
+                <div>
+                  <div className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/60 mb-1">
+                    Catatan Laporan Lapangan:
+                  </div>
+                  <p className="bg-paper p-3 border border-ink/10 text-ink/80 leading-relaxed font-medium">
+                    &ldquo;{selectedCard.note}&rdquo;
+                  </p>
+                </div>
+
+                {selectedCard.rujukan && (
+                  <div className="border-l-4 border-sky-600 bg-sky-500/10 p-3">
+                    <div className="font-mono text-[10px] font-bold uppercase tracking-widest text-sky-600 mb-1">
+                      Rujukan &amp; Alur Tindak Lanjut:
                     </div>
-                    <div>
-                      <span className="text-ink/50 block">Orang Tua / Wali:</span>
-                      <span className="font-bold text-ink">{selectedCard.parent}</span>
+                    <div className="font-semibold text-ink">{selectedCard.rujukan}</div>
+                  </div>
+                )}
+
+                {selectedCard.alasanDitutup && (
+                  <div className="border-l-4 border-rose-600 bg-rose-50 p-4 font-mono text-xs space-y-1">
+                    <div className="font-bold text-rose-950 uppercase flex items-center gap-1.5">
+                      <AlertTriangle className="size-4 text-rose-600" />
+                      <span>ALASAN UTAMA ADVOKASI DITUTUP / CATATAN MEDIASI TERAKHIR:</span>
                     </div>
+                    <p className="text-rose-900 font-medium leading-relaxed font-sans text-xs">
+                      &ldquo;{selectedCard.alasanDitutup}&rdquo;
+                    </p>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center justify-between border border-ink/15 bg-paper p-3 font-mono text-[10px] uppercase">
-                <span className="font-bold text-ink/70">PRIORITAS PENANGANAN:</span>
-                <button
-                  onClick={() => toggleCardUrgent(selectedCard)}
-                  className={`inline-flex items-center gap-1.5 border px-3 py-1 font-bold tracking-wider cursor-pointer ${
-                    selectedCard.urgent
-                      ? "bg-signal text-white border-signal"
-                      : "bg-white text-ink border-ink hover:bg-ink hover:text-paper"
-                  }`}
-                >
-                  <Flag className="size-3" />
-                  <span>{selectedCard.urgent ? "PRIORITAS TINGGI (URGENT)" : "+ TANDAI PRIORITAS"}</span>
-                </button>
-              </div>
-
-              {selectedCard.kategoriAlasan && (
-                <div className="border-l-4 border-amber-500 bg-amber-50 p-3 font-mono text-[10px] uppercase">
-                  <span className="font-bold text-amber-900 block">Kategori Utama Alasan Putus Sekolah:</span>
-                  <span className="text-ink font-bold">{selectedCard.kategoriAlasan}</span>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="border border-ink/15 p-3 bg-paper">
-                  <div className="font-mono text-[9px] uppercase tracking-widest text-ink/50 flex items-center gap-1 mb-1">
-                    <Home className="size-3 text-sky-600" /> Alamat Rumah Lengkap
-                  </div>
-                  <div className="font-semibold text-ink">{selectedCard.address || "RT/RW Belum Diverifikasi"}</div>
-                </div>
-
-                <div className="border border-ink/15 p-3 bg-paper">
-                  <div className="font-mono text-[9px] uppercase tracking-widest text-ink/50 flex items-center gap-1 mb-1">
-                    <Phone className="size-3 text-sky-600" /> Kontak Wali / Pelapor
-                  </div>
-                  <div className="font-mono font-bold text-ink">
-                    {selectedCard.parent ? `${selectedCard.parent} — ` : ""}
-                    {selectedCard.phone || "Tidak Ada Telepon"}
-                  </div>
-                </div>
-              </div>
-
-              {selectedCard.lat && selectedCard.lng && (
-                <div className="border border-emerald-300 bg-emerald-50 p-3 font-mono text-[10px] uppercase flex items-center justify-between">
-                  <span className="font-bold text-emerald-900 flex items-center gap-1">
-                    <MapPin className="size-3.5 text-emerald-600" /> KOORDINAT TERPASANG DI PETA:
-                  </span>
-                  <span className="font-bold text-emerald-950">{selectedCard.lat.toFixed(6)}, {selectedCard.lng.toFixed(6)}</span>
-                </div>
-              )}
-
-              {selectedCard.statusDokumen && (
-                <div className="border-l-4 border-sky-600 bg-sky-50 p-3 font-mono text-[10px] uppercase">
-                  <span className="font-bold text-sky-900 block">Status Dokumen Kependudukan:</span>
-                  <span className="text-ink">{selectedCard.statusDokumen}</span>
-                </div>
-              )}
-
-              <div>
-                <div className="font-mono text-[10px] font-bold uppercase tracking-widest text-ink/60 mb-1">
-                  Catatan Laporan Lapangan:
-                </div>
-                <p className="bg-paper p-3 border border-ink/10 text-ink/80 leading-relaxed font-medium">
-                  &ldquo;{selectedCard.note}&rdquo;
-                </p>
-              </div>
-
-              {selectedCard.rujukan && (
-                <div className="border-l-4 border-sky-600 bg-sky-500/10 p-3">
-                  <div className="font-mono text-[10px] font-bold uppercase tracking-widest text-sky-600 mb-1">
-                    Rujukan &amp; Alur Tindak Lanjut:
-                  </div>
-                  <div className="font-semibold text-ink">{selectedCard.rujukan}</div>
-                </div>
-              )}
-
-              {selectedCard.fotoDokumentasiSelesai && (
-                <div className="border-2 border-emerald-300 bg-[#f4f3ee] overflow-hidden font-mono text-xs">
-                  <div className="bg-emerald-600 text-white px-3 py-1.5 font-bold uppercase text-[9px] flex items-center justify-between">
-                    <span>📷 FOTO DOKUMENTASI ANAK BELAJAR DI PKBM</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowProofViewerModal(selectedCard)}
-                      className="border border-white/40 bg-white/20 text-white px-2 py-0.5 text-[8px] font-bold uppercase hover:bg-white hover:text-emerald-900 cursor-pointer transition-colors"
-                    >
-                      👁️ LIHAT PENUH
-                    </button>
-                  </div>
-                  {/\.(jpg|jpeg|png|gif|webp)$/i.test(selectedCard.fotoDokumentasiSelesai) ? (
-                    <div className="p-2">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={`/uploads/${selectedCard.fotoDokumentasiSelesai}`}
-                        alt={`Dokumentasi ${selectedCard.name} belajar di PKBM`}
-                        className="w-full h-auto max-h-48 object-contain border border-ink/10"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display = "none";
-                          (e.currentTarget.nextElementSibling as HTMLElement)!.style.display = "flex";
-                        }}
-                      />
-                      <div className="hidden items-center justify-center h-24 bg-ink/5 font-mono text-[10px] text-ink/50 uppercase">
-                        [ Pratinjau tidak tersedia: {selectedCard.fotoDokumentasiSelesai} ]
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-3 flex items-center gap-2">
-                      <FileCheck className="size-5 text-emerald-400 shrink-0" />
-                      <span className="font-bold text-ink text-[11px]">{selectedCard.fotoDokumentasiSelesai}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {selectedCard.alasanDitutup && (
-                <div className="border-l-4 border-rose-600 bg-rose-50 p-4 font-mono text-xs space-y-1">
-                  <div className="font-bold text-rose-950 uppercase flex items-center gap-1.5">
-                    <AlertTriangle className="size-4 text-rose-600" />
-                    <span>ALASAN UTAMA ADVOKASI DITUTUP / CATATAN MEDIASI TERAKHIR:</span>
-                  </div>
-                  <p className="text-rose-900 font-medium leading-relaxed font-sans text-xs">
-                    &ldquo;{selectedCard.alasanDitutup}&rdquo;
-                  </p>
-                </div>
-              )}
-
-              {/* ─── BUKTI FISIK FOTO SECTION ─── */}
-              {selectedCard.buktiUrl && (
-                <div className="border-2 border-sky-300 bg-[#f4f3ee] overflow-hidden font-mono text-xs">
-                  <div className="bg-sky-600 text-white px-3 py-2 font-bold uppercase text-[9px] flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <FileCheck className="size-3.5" /> PRATINJAU BUKTI FOTO / DOKUMEN RUJUKAN PKBM
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowProofViewerModal(selectedCard)}
-                      className="border border-white/40 bg-white/20 text-white px-2 py-0.5 text-[8px] font-bold uppercase hover:bg-white hover:text-sky-900 cursor-pointer transition-colors"
-                    >
-                      📋 DETAIL PENUH
-                    </button>
-                  </div>
-                  {/* File name & info row */}
-                  <div className="px-3 py-2 bg-white border-b border-sky-100 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileCheck className="size-3.5 text-sky-600 shrink-0" />
-                      <span className="text-[10px] font-bold text-ink truncate">
-                        {/* Show original filename if it's an object URL, otherwise show buktiUrl directly */}
-                        {selectedCard.buktiUrl.startsWith("blob:") ? "Foto yang diunggah (sesi ini)" : selectedCard.buktiUrl}
+              {/* ─── COLUMN RIGHT: FOTO PREVIEW & BUKTI FISIK PENDAMPINGAN ADVOKASI ─── */}
+              <div className="space-y-4">
+                {/* 1. PRATINJAU BUKTI FOTO UPLOAD (If photo exists) */}
+                {selectedCard.buktiUrl && (
+                  <div className="border-2 border-sky-300 bg-[#f4f3ee] overflow-hidden font-mono text-xs">
+                    <div className="bg-sky-600 text-white px-3 py-2 font-bold uppercase text-[9px] flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <FileCheck className="size-3.5" /> PRATINJAU BUKTI FOTO / DOKUMEN RUJUKAN
                       </span>
-                    </div>
-                    <span className="text-[8px] bg-sky-100 text-sky-700 px-2 py-0.5 font-bold uppercase shrink-0">TERVERIFIKASI</span>
-                  </div>
-                  {/* Preview area - only show button, no inline thumbnail */}
-                  <div className="p-4 flex items-center justify-center gap-4">
-                    {(/\.(jpg|jpeg|png|gif|webp)$/i.test(selectedCard.buktiUrl) || selectedCard.buktiUrl.startsWith("blob:")) ? (
                       <button
                         type="button"
-                        onClick={() => setImageLightboxUrl(selectedCard.buktiUrl!)}
-                        className="flex items-center gap-2 border-2 border-sky-600 bg-white text-sky-700 px-4 py-2.5 font-mono text-[10px] font-bold uppercase hover:bg-sky-600 hover:text-white transition-all cursor-pointer shadow-[2px_2px_0_0_#0284c7]"
+                        onClick={() => openProofViewer(selectedCard)}
+                        className="border border-white/40 bg-white/20 text-white px-2 py-0.5 text-[8px] font-bold uppercase hover:bg-white hover:text-sky-900 cursor-pointer transition-colors"
                       >
-                        🔍 Tampilkan Pratinjau Foto (Ukuran Maksimal)
+                        📋 DETAIL PENUH
                       </button>
-                    ) : (
-                      <div className="flex items-center gap-2 text-ink/50 font-mono text-[10px] uppercase">
-                        <FileCheck className="size-5 text-sky-300" />
-                        <span>File PDF / Dokumen — Klik &ldquo;Detail Penuh&rdquo; untuk melihat</span>
+                    </div>
+
+                    <div className="px-3 py-2 bg-white border-b border-sky-100 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileCheck className="size-3.5 text-sky-600 shrink-0" />
+                        <span className="text-[10px] font-bold text-ink truncate">
+                          {selectedCard.buktiUrl.startsWith("data:image/") ? "Foto bukti terlampir (Base64 Persisten)" : selectedCard.buktiUrl.startsWith("blob:") ? "Foto yang diunggah (sesi ini)" : selectedCard.buktiUrl}
+                        </span>
+                      </div>
+                      <span className="text-[8px] bg-sky-100 text-sky-700 px-2 py-0.5 font-bold uppercase shrink-0">TERVERIFIKASI</span>
+                    </div>
+
+                    <div className="p-4 flex flex-col items-center justify-center gap-3">
+                      {(selectedCard.buktiUrl.startsWith("data:image/") || selectedCard.buktiUrl.startsWith("blob:") || /\.(jpg|jpeg|png|gif|webp)$/i.test(selectedCard.buktiUrl)) ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={selectedCard.buktiUrl}
+                            alt={`Bukti rujukan ${selectedCard.name}`}
+                            className="w-full h-auto max-h-48 object-contain border border-ink/20 bg-white p-1"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setImageLightboxUrl(selectedCard.buktiUrl!)}
+                            className="w-full border-2 border-sky-600 bg-white text-sky-700 py-2 font-mono text-[10px] font-bold uppercase hover:bg-sky-600 hover:text-white transition-all cursor-pointer shadow-[2px_2px_0_0_#0284c7] flex items-center justify-center gap-1.5"
+                          >
+                            🔍 Tampilkan Foto (Ukuran Maksimal)
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2 text-ink/50 font-mono text-[10px] uppercase py-2">
+                          <FileCheck className="size-5 text-sky-400" />
+                          <span>File PDF / Dokumen — Klik "Detail Penuh" untuk melihat</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {selectedCard.catatanOperator && (
+                      <div className="px-3 pb-3">
+                        <p className="text-ink/80 font-sans text-xs italic bg-white p-2 border border-sky-100">
+                          &ldquo;{selectedCard.catatanOperator}&rdquo;
+                        </p>
                       </div>
                     )}
                   </div>
-                  {selectedCard.catatanOperator && (
-                    <div className="px-3 pb-3">
-                      <p className="text-ink/80 font-sans text-xs italic bg-white p-2 border border-sky-100">
-                        &ldquo;{selectedCard.catatanOperator}&rdquo;
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
 
-              {/* ─── STEMPEL DIGITAL VERIFIKASI OPERATOR SECTION ─── */}
-              {(selectedCard.buktiUrl || selectedCard.statusDokumen) && (
-                <div className="border-2 border-ink bg-[#f4f3ee] overflow-hidden font-mono text-xs">
-                  <div className="bg-ink text-paper px-3 py-2 font-bold uppercase text-[9px] flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <ShieldCheck className="size-3.5" /> STEMPEL DIGITAL VERIFIKASI OPERATOR
+                {/* 2. CARD "BUKTI FISIK PENDAMPINGAN ADVOKASI" (Aesthetic Neo-Brutalist Design) */}
+                <div className="border-2 border-ink bg-[#f4f3ee] overflow-hidden font-mono text-xs relative">
+                  {/* Decorative Watermark */}
+                  <div className="absolute -right-4 -bottom-4 opacity-[0.06] font-display text-8xl font-black uppercase tracking-tighter text-ink pointer-events-none select-none">
+                    OFFICIAL
+                  </div>
+
+                  {/* Header Banner */}
+                  <div className="bg-sky-600 text-white px-3.5 py-2.5 font-bold uppercase text-[10px] flex items-center justify-between shadow-sm">
+                    <span className="flex items-center gap-2">
+                      <FileCheck className="size-4 text-white" /> BUKTI FISIK PENDAMPINGAN ADVOKASI
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowProofViewerModal(selectedCard)}
-                      className="border border-paper/40 bg-paper/20 text-paper px-2 py-0.5 text-[8px] font-bold uppercase hover:bg-paper hover:text-ink cursor-pointer transition-colors"
-                    >
-                      📋 LIHAT PENUH
-                    </button>
+                    <span className="bg-white/20 text-white px-2 py-0.5 text-[8px] font-bold tracking-wider uppercase">
+                      KREDENSIAL ADVOKASI
+                    </span>
                   </div>
-                  {/* Stamp card content */}
-                  <div className="p-4 relative overflow-hidden">
-                    {/* Watermark VALID */}
-                    <div className="absolute -right-4 -bottom-4 opacity-[0.06] font-display text-7xl font-black uppercase tracking-tighter text-ink pointer-events-none select-none">
-                      VALID
-                    </div>
-                    <div className="space-y-2 text-[10px] relative z-10">
-                      <div className="flex items-center gap-2 border-b border-ink/10 pb-2">
-                        <div className="grid size-6 place-items-center bg-sky-600 text-white shrink-0">
-                          <ShieldCheck className="size-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-ink text-xs">BERKAS ADVOKASI RESMI TERVERIFIKASI</div>
-                          <div className="text-ink/50 text-[9px] uppercase">Tim KKN 34 — Kelurahan Dukuh Sutorejo</div>
-                        </div>
-                        <div className="ml-auto bg-sky-600 text-white px-2 py-0.5 text-[8px] font-bold uppercase shrink-0">
-                          ✓ VALID
-                        </div>
+
+                  {/* Body Content */}
+                  <div className="p-4 space-y-3 relative z-10">
+                    <div className="flex items-start justify-between border-b border-ink/15 pb-3">
+                      <div>
+                        <div className="font-bold text-ink text-xs uppercase">TIM ADVOKASI KKN 34 &middot; KELURAHAN DUKUH SUTOREJO</div>
+                        <div className="text-ink/50 text-[9px] uppercase mt-0.5">Surabaya, Jawa Timur &middot; Posko Pendampingan Warga</div>
                       </div>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
-                        <div><span className="text-ink/50">ID KASUS:</span> <strong>#{selectedCard.id}</strong></div>
-                        <div><span className="text-ink/50">WILAYAH:</span> <strong>{selectedCard.rw}</strong></div>
-                        <div><span className="text-ink/50">SUBJEK:</span> <strong>{selectedCard.name}</strong></div>
-                        <div><span className="text-ink/50">STATUS:</span> <strong className="text-sky-600">{selectedCard.statusDokumen || "Diverifikasi"}</strong></div>
-                        {selectedCard.rujukan && (
-                          <div className="col-span-2"><span className="text-ink/50">RUJUKAN:</span> <strong>{selectedCard.rujukan}</strong></div>
-                        )}
-                        <div><span className="text-ink/50">OPERATOR:</span> <strong>{selectedCard.reporter}</strong></div>
-                        {selectedCard.verifiedAt && (
-                          <div><span className="text-ink/50">TGL VERIFIKASI:</span> <strong>{new Date(selectedCard.verifiedAt).toLocaleDateString("id-ID")}</strong></div>
-                        )}
+                      <div className="grid size-9 place-items-center bg-sky-600 text-white shrink-0 shadow-[2px_2px_0_0_#121212]">
+                        <ShieldCheck className="size-5" />
                       </div>
                     </div>
-                  </div>
-                  <div className="px-4 py-2 bg-white border-t border-ink/10 flex items-center justify-center">
+
+                    <div className="bg-white p-3 border border-ink/15 space-y-2 text-[10px]">
+                      <div className="flex justify-between border-b border-ink/10 pb-1">
+                        <span className="text-ink/50 uppercase">ID ARSIP ADVOKASI</span>
+                        <span className="font-extrabold text-ink">#{selectedCard.id}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-ink/10 pb-1">
+                        <span className="text-ink/50 uppercase">SUBJEK ANAK</span>
+                        <span className="font-bold text-ink">{selectedCard.name}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-ink/10 pb-1">
+                        <span className="text-ink/50 uppercase">WILAYAH / RW</span>
+                        <span className="font-bold text-ink">{selectedCard.rw}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-ink/10 pb-1">
+                        <span className="text-ink/50 uppercase">STATUS DOKUMEN</span>
+                        <span className="font-bold text-sky-600">{selectedCard.statusDokumen || "Diverifikasi Door-to-Door"}</span>
+                      </div>
+                      {selectedCard.rujukan && (
+                        <div className="flex justify-between border-b border-ink/10 pb-1">
+                          <span className="text-ink/50 uppercase">INSTANSI RUJUKAN</span>
+                          <span className="font-bold text-sky-950 text-right max-w-[55%]">{selectedCard.rujukan}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between border-b border-ink/10 pb-1">
+                        <span className="text-ink/50 uppercase">PENANGGUNG JAWAB</span>
+                        <span className="font-bold text-ink">{selectedCard.reporter || "Operator Tim KKN 34"}</span>
+                      </div>
+                    </div>
+
+                    {/* Official Stamp Badge */}
+                    <div className="border border-sky-300 bg-sky-50 p-2.5 flex items-center gap-3">
+                      <div className="size-8 rounded-full bg-sky-600 text-white grid place-items-center shrink-0 font-bold text-xs shadow-sm">
+                        ✓
+                      </div>
+                      <div className="text-[9px] leading-tight">
+                        <div className="font-bold text-sky-950 uppercase">DIVERIFIKASI RESMI OPERATOR KKN 34</div>
+                        <div className="text-sky-800">Dokumen rujukan terdaftar resmi dalam sistem RadarAnak.</div>
+                      </div>
+                    </div>
+
+                    {/* Primary Button Action */}
                     <button
                       type="button"
-                      onClick={() => setShowProofViewerModal(selectedCard)}
-                      className="flex items-center gap-2 border border-ink bg-paper text-ink px-4 py-2 font-mono text-[10px] font-bold uppercase hover:bg-ink hover:text-paper transition-all cursor-pointer shadow-[2px_2px_0_0_#121212]"
+                      onClick={() => openProofViewer(selectedCard)}
+                      className="w-full flex items-center justify-center gap-2 border-2 border-ink bg-sky-600 text-white py-2.5 font-mono text-[10px] font-bold uppercase tracking-wider hover:bg-ink transition-all cursor-pointer shadow-[3px_3px_0_0_#121212] active:translate-y-px"
                     >
-                      🪪 Tampilkan Stempel Digital Ukuran Penuh
+                      🪪 BUKA BUKTI FISIK UTUH
                     </button>
                   </div>
                 </div>
-              )}
 
-              {/* FOTO DOKUMENTASI SELESAI - button based, no inline thumbnail */}
-              {selectedCard.fotoDokumentasiSelesai && (
-                <div className="border-2 border-emerald-300 bg-[#f4f3ee] overflow-hidden font-mono text-xs">
-                  <div className="bg-emerald-600 text-white px-3 py-2 font-bold uppercase text-[9px] flex items-center justify-between">
-                    <span>📷 FOTO DOKUMENTASI ANAK BELAJAR DI PKBM</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowProofViewerModal(selectedCard)}
-                      className="border border-white/40 bg-white/20 text-white px-2 py-0.5 text-[8px] font-bold uppercase hover:bg-white hover:text-emerald-900 cursor-pointer transition-colors"
-                    >
-                      📋 DETAIL PENUH
-                    </button>
-                  </div>
-                  <div className="p-4 flex items-center justify-center">
-                    {/\.(jpg|jpeg|png|gif|webp)$/i.test(selectedCard.fotoDokumentasiSelesai) ? (
+                {/* 3. FOTO DOKUMENTASI SELESAI (If fotoDokumentasiSelesai exists) */}
+                {selectedCard.fotoDokumentasiSelesai && (
+                  <div className="border-2 border-emerald-300 bg-[#f4f3ee] overflow-hidden font-mono text-xs">
+                    <div className="bg-emerald-600 text-white px-3 py-2 font-bold uppercase text-[9px] flex items-center justify-between">
+                      <span>📷 FOTO DOKUMENTASI ANAK BELAJAR DI PKBM</span>
                       <button
                         type="button"
-                        onClick={() => setImageLightboxUrl(selectedCard.fotoDokumentasiSelesai!.startsWith("blob:") ? selectedCard.fotoDokumentasiSelesai! : `/uploads/${selectedCard.fotoDokumentasiSelesai}`)}
-                        className="flex items-center gap-2 border-2 border-emerald-600 bg-white text-emerald-700 px-4 py-2.5 font-mono text-[10px] font-bold uppercase hover:bg-emerald-600 hover:text-white transition-all cursor-pointer shadow-[2px_2px_0_0_#059669]"
+                        onClick={() => openProofViewer(selectedCard)}
+                        className="border border-white/40 bg-white/20 text-white px-2 py-0.5 text-[8px] font-bold uppercase hover:bg-white hover:text-emerald-900 cursor-pointer transition-colors"
                       >
-                        🔍 Tampilkan Foto Dokumentasi (Ukuran Maksimal)
+                        📋 DETAIL PENUH
                       </button>
-                    ) : (
-                      <div className="flex items-center gap-2 text-ink/50 font-mono text-[10px] uppercase">
-                        <FileCheck className="size-5 text-emerald-300" />
-                        <span>{selectedCard.fotoDokumentasiSelesai}</span>
-                      </div>
-                    )}
+                    </div>
+                    <div className="p-4 flex items-center justify-center">
+                      {(selectedCard.fotoDokumentasiSelesai.startsWith("data:image/") || selectedCard.fotoDokumentasiSelesai.startsWith("blob:") || /\.(jpg|jpeg|png|gif|webp)$/i.test(selectedCard.fotoDokumentasiSelesai)) ? (
+                        <button
+                          type="button"
+                          onClick={() => setImageLightboxUrl(selectedCard.fotoDokumentasiSelesai!)}
+                          className="flex items-center gap-2 border-2 border-emerald-600 bg-white text-emerald-700 px-4 py-2.5 font-mono text-[10px] font-bold uppercase hover:bg-emerald-600 hover:text-white transition-all cursor-pointer shadow-[2px_2px_0_0_#059669]"
+                        >
+                          🔍 Tampilkan Foto Dokumentasi (Ukuran Maksimal)
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2 text-ink/50 font-mono text-[10px] uppercase">
+                          <FileCheck className="size-5 text-emerald-300" />
+                          <span>{selectedCard.fotoDokumentasiSelesai}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
+            {/* Modal Footer */}
             <div className="mt-6 border-t border-ledger pt-4 flex items-center justify-between">
               <button
                 onClick={() => {

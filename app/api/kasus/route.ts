@@ -28,13 +28,14 @@ export async function GET(request: Request) {
         // Map DB rows from schema.sql columns to Kanban cards with short ID and contact info
         const mappedData = data.map((c: any) => {
           const rawName = c.nama_lengkap_asli || c.inisial_publik || "Subjek";
-          const shortId = c.id && c.id.length < 10 ? c.id : generateShortId(c.rw, rawName);
+          const shortId = c.id && c.id.length < 10 ? c.id : generateShortId(c.rw || "RW 04", rawName);
 
           return {
             id: shortId,
             dbUuid: c.id,
             name: rawName,
             age: c.usia || "12 Tahun",
+            nik: c.nik || c.nik_subjek || "",
             rw: c.rw || "RW 04",
             address: c.alamat_rt_rw || "",
             parent: c.nama_wali || "",
@@ -42,7 +43,17 @@ export async function GET(request: Request) {
             note: c.catatan_advokasi || c.akar_masalah || "",
             reporter: c.pelapor || "Warga",
             statusAdvokasi: c.status_advokasi || "baru",
+            kategoriAlasan: c.kategori_alasan || "",
+            statusDokumen: c.status_dokumen || "",
+            rujukan: c.rujukan || "",
+            buktiUrl: c.bukti_url || "",
+            catatanOperator: c.catatan_operator || "",
+            alasanDitutup: c.alasan_ditutup || "",
+            fotoDokumentasiSelesai: c.foto_dokumentasi_selesai || "",
             urgent: !!c.urgent,
+            verifiedAt: c.verified_at || c.created_at || "",
+            lat: typeof c.lat === "number" ? c.lat : undefined,
+            lng: typeof c.lng === "number" ? c.lng : undefined,
           };
         });
 
@@ -144,7 +155,31 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, newStatus, dbUuid, name, address, parent, phone, catatanAdvokasi, alasanDitutup } = body;
+    const {
+      id,
+      newStatus,
+      dbUuid,
+      name,
+      address,
+      parent,
+      phone,
+      catatanAdvokasi,
+      alasanDitutup,
+      rujukan,
+      catatanOperator,
+      buktiUrl,
+      statusDokumen,
+      kategoriAlasan,
+      nik,
+      urgent,
+      lat,
+      lng,
+      fotoDokumentasiSelesai,
+      rw,
+      age,
+      note,
+      reporter,
+    } = body;
 
     if (!id || !newStatus) {
       return NextResponse.json(
@@ -159,20 +194,75 @@ export async function PUT(request: Request) {
       if (address) updatePayload.alamat_rt_rw = address;
       if (parent) updatePayload.nama_wali = parent;
       if (phone) updatePayload.no_phone = phone;
-      if (alasanDitutup || catatanAdvokasi) updatePayload.catatan_advokasi = alasanDitutup || catatanAdvokasi;
+      if (alasanDitutup) updatePayload.alasan_ditutup = alasanDitutup;
+      if (catatanAdvokasi) updatePayload.catatan_advokasi = catatanAdvokasi;
+      if (catatanOperator) updatePayload.catatan_operator = catatanOperator;
+      if (rujukan) updatePayload.rujukan = rujukan;
+      if (buktiUrl) updatePayload.bukti_url = buktiUrl;
+      if (statusDokumen) updatePayload.status_dokumen = statusDokumen;
+      if (kategoriAlasan) updatePayload.kategori_alasan = kategoriAlasan;
+      if (nik) updatePayload.nik = nik;
+      if (fotoDokumentasiSelesai) updatePayload.foto_dokumentasi_selesai = fotoDokumentasiSelesai;
+      if (typeof urgent === "boolean") updatePayload.urgent = urgent;
+      if (typeof lat === "number") updatePayload.lat = lat;
+      if (typeof lng === "number") updatePayload.lng = lng;
 
       const isUuid = (val?: string) =>
         Boolean(val && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(val));
 
       const targetId = isUuid(dbUuid) ? dbUuid : isUuid(id) ? id : null;
 
+      let updateSuccess = false;
+
       if (targetId) {
-        const { error } = await (supabase as any).from("kasus").update(updatePayload).eq("id", targetId);
-        if (error) console.error("Supabase update by ID error:", error);
-      } else if (name) {
-        // Fallback for short-coded IDs: match row by nama_lengkap_asli without passing non-UUID to UUID column
-        const { error } = await (supabase as any).from("kasus").update(updatePayload).eq("nama_lengkap_asli", name);
-        if (error) console.error("Supabase update by name error:", error);
+        const { data, error } = await (supabase as any)
+          .from("kasus")
+          .update(updatePayload)
+          .eq("id", targetId)
+          .select();
+
+        if (!error && data && data.length > 0) {
+          updateSuccess = true;
+        } else if (error) {
+          console.error("Supabase update by ID error:", error);
+        }
+      }
+
+      if (!updateSuccess && name) {
+        // Fallback: match row by nama_lengkap_asli
+        const { data, error } = await (supabase as any)
+          .from("kasus")
+          .update(updatePayload)
+          .eq("nama_lengkap_asli", name)
+          .select();
+
+        if (!error && data && data.length > 0) {
+          updateSuccess = true;
+        } else if (error) {
+          console.error("Supabase update by name error:", error);
+        }
+      }
+
+      // Upsert Fallback: If card did not exist in Supabase DB (e.g. initial mock data card), insert it now!
+      if (!updateSuccess) {
+        const insertPayload = {
+          inisial_publik: name && name.length > 2 ? name.substring(0, 1) + "." + name.substring(name.length - 1) : name || "Subjek",
+          nama_lengkap_asli: name || "Subjek",
+          usia: age || "12 Tahun",
+          rw: rw || "RW 04",
+          alamat_rt_rw: address || "RT 01 / RW 04, Dukuh Sutorejo",
+          nama_wali: parent || "Orang Tua / Wali",
+          no_phone: phone || "0812-0000-0000",
+          catatan_advokasi: note || catatanAdvokasi || "Advokasi diproses.",
+          status_advokasi: newStatus,
+          pelapor: reporter || "Warga",
+          ...updatePayload,
+        };
+
+        const { error: insertErr } = await (supabase as any).from("kasus").insert([insertPayload]);
+        if (insertErr) {
+          console.error("Supabase upsert insert error:", insertErr);
+        }
       }
     }
 
