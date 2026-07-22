@@ -18,29 +18,29 @@ export async function GET(request: Request) {
     if (isSupabaseConfigured()) {
       let query = (supabase as any).from("kasus").select("*");
       if (rw && rw !== "ALL") {
-        query = query.eq("wilayah_rw", rw);
+        query = query.eq("rw", rw);
       }
 
       const { data, error } = await query;
 
       if (!error && data && data.length > 0) {
+        // Map DB rows from schema.sql columns to Kanban cards
         const mappedData = data.map((c: any) => ({
           id: c.id,
-          name: c.inisial_anak || c.name || "A.N.",
-          age: c.age || "12 Tahun",
-          rw: c.wilayah_rw || c.rw || "RW 04",
-          address: c.detail_alamat || c.address || "",
-          note: c.deskripsi || c.note || "",
-          reporter: c.pelapor_nama || c.reporter || "Warga",
-          statusAdvokasi: c.status || "baru",
-          lat: c.lat,
-          lng: c.lng,
+          name: c.inisial_publik || c.nama_lengkap_asli || "A.N.",
+          age: c.usia || "12 Tahun",
+          rw: c.rw || "RW 04",
+          address: c.alamat_rt_rw || "",
+          note: c.catatan_advokasi || c.akar_masalah || "",
+          reporter: c.pelapor || "Warga",
+          statusAdvokasi: c.status_advokasi || "baru",
+          urgent: !!c.urgent,
         }));
 
         const groupedData = {
           baru: mappedData.filter((c: any) => c.statusAdvokasi === "baru"),
-          verifikasi: mappedData.filter((c: any) => c.statusAdvokasi === "diverifikasi" || c.statusAdvokasi === "verifikasi"),
-          rujuk: mappedData.filter((c: any) => c.statusAdvokasi === "dirujuk" || c.statusAdvokasi === "rujuk"),
+          verifikasi: mappedData.filter((c: any) => c.statusAdvokasi === "verifikasi" || c.statusAdvokasi === "diverifikasi"),
+          rujuk: mappedData.filter((c: any) => c.statusAdvokasi === "rujuk" || c.statusAdvokasi === "dirujuk"),
           selesai: mappedData.filter((c: any) => c.statusAdvokasi === "selesai"),
         };
 
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
     console.error("Supabase fetch error, fallback to initial:", err);
   }
 
-  // Fallback to INITIAL dataset if Supabase table is initializing or empty
+  // Fallback to INITIAL dataset if Supabase table is empty
   return NextResponse.json({
     success: true,
     data: INITIAL,
@@ -79,37 +79,36 @@ export async function POST(request: Request) {
       );
     }
 
-    const newId = String(Math.floor(1000 + Math.random() * 9000));
     const newKasus = {
-      id: newId,
+      id: String(Math.floor(1000 + Math.random() * 9000)),
       name,
       age: age || "12 Tahun",
-      nik: "317408" + Math.floor(1000000000 + Math.random() * 9000000000),
       rw,
       address: `RT 01 / ${rw}, Dukuh Sutorejo, Mulyorejo, Surabaya`,
-      parent: "Orang Tua / Wali",
-      phone: "0812-0000-0000",
       note: note || "Laporan baru terdaftar dari warga.",
       reporter: reporter || "Warga / Relawan RW",
-      statusDokumen: "Terdaftar Lapangan",
-      rujukan: "Dalam Antrean Verifikasi Operator",
       statusAdvokasi: "baru",
       createdAt: new Date().toISOString(),
     };
 
     if (isSupabaseConfigured()) {
-      await (supabase as any).from("kasus").insert([
+      const { error } = await (supabase as any).from("kasus").insert([
         {
-          id: newId,
-          inisial_anak: name,
-          wilayah_rw: rw,
-          detail_alamat: `RT 01 / ${rw}, Dukuh Sutorejo, Mulyorejo, Surabaya`,
-          penyebab_awal: "biaya",
-          deskripsi: note,
-          status: "baru",
-          pelapor_nama: reporter || "Warga / Relawan RW",
+          inisial_publik: name.length > 2 ? name.substring(0, 1) + "." + name.substring(name.length - 1) : name,
+          nama_lengkap_asli: name,
+          usia: age || "12 Tahun",
+          rw: rw,
+          alamat_rt_rw: `RT 01 / ${rw}, Dukuh Sutorejo, Mulyorejo, Surabaya`,
+          akar_masalah: note || "Kendala biaya dan transportasi",
+          catatan_advokasi: note || "Laporan baru terdaftar dari warga.",
+          status_advokasi: "baru",
+          pelapor: reporter || "Warga / Relawan RW",
         },
       ]);
+
+      if (error) {
+        console.error("Supabase insert error:", error);
+      }
     }
 
     return NextResponse.json({
@@ -140,7 +139,7 @@ export async function PUT(request: Request) {
     if (isSupabaseConfigured()) {
       await (supabase as any)
         .from("kasus")
-        .update({ status: newStatus })
+        .update({ status_advokasi: newStatus })
         .eq("id", id);
     }
 

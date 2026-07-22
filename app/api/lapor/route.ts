@@ -21,20 +21,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const newId = String(Math.floor(1000 + Math.random() * 9000));
     const ticketId = "RADAR-TK-" + Math.floor(100000 + Math.random() * 900000);
 
     if (isSupabaseConfigured()) {
       const { error } = await (supabase as any).from("kasus").insert([
         {
-          id: newId,
-          inisial_anak: name,
-          wilayah_rw: rw,
-          detail_alamat: `RT 01 / ${rw}, Dukuh Sutorejo, Mulyorejo, Surabaya`,
-          penyebab_awal: "biaya",
-          deskripsi: note || "Laporan temuan warga dari portal relawan.",
-          status: "baru",
-          pelapor_nama: reporter || "Warga / Relawan Lapangan",
+          inisial_publik: name.length > 2 ? name.substring(0, 1) + "." + name.substring(name.length - 1) : name,
+          nama_lengkap_asli: name,
+          usia: "12 Tahun",
+          rw: rw,
+          alamat_rt_rw: `RT 01 / ${rw}, Dukuh Sutorejo, Mulyorejo, Surabaya`,
+          akar_masalah: note || "Laporan temuan warga dari portal relawan.",
+          catatan_advokasi: note || "Laporan temuan warga dari portal relawan.",
+          status_advokasi: "baru",
+          pelapor: reporter || "Warga / Relawan Lapangan",
         },
       ]);
 
