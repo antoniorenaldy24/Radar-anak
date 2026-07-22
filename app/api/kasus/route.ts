@@ -1,18 +1,63 @@
 import { NextResponse } from "next/server";
 import { INITIAL } from "@/components/radar/KanbanBoard";
+import { supabase } from "@/lib/supabase";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const rw = searchParams.get("rw");
 
-  // In production, fetch from Supabase:
-  // const { data, error } = await supabaseServer.from("kasus").select("*");
+  try {
+    // If Supabase URL environment variable is provided, query real Supabase DB
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      let query = (supabase as any).from("kasus").select("*");
+      if (rw && rw !== "ALL") {
+        query = query.eq("wilayah_rw", rw);
+      }
 
+      const { data, error } = await query;
+
+      if (!error && data && data.length > 0) {
+        // Map DB rows to Kanban cards
+        const mappedData = data.map((c: any) => ({
+          id: c.id,
+          name: c.inisial_anak || c.name || "A.N.",
+          age: c.age || "12 Tahun",
+          rw: c.wilayah_rw || c.rw || "RW 04",
+          address: c.detail_alamat || c.address || "",
+          note: c.deskripsi || c.note || "",
+          reporter: c.pelapor_nama || c.reporter || "Warga",
+          statusAdvokasi: c.status || "baru",
+          lat: c.lat,
+          lng: c.lng,
+        }));
+
+        const groupedData = {
+          baru: mappedData.filter((c: any) => c.statusAdvokasi === "baru"),
+          verifikasi: mappedData.filter((c: any) => c.statusAdvokasi === "diverifikasi" || c.statusAdvokasi === "verifikasi"),
+          rujuk: mappedData.filter((c: any) => c.statusAdvokasi === "dirujuk" || c.statusAdvokasi === "rujuk"),
+          selesai: mappedData.filter((c: any) => c.statusAdvokasi === "selesai"),
+        };
+
+        return NextResponse.json({
+          success: true,
+          data: groupedData,
+          filterRw: rw || "ALL",
+          timestamp: new Date().toISOString(),
+          source: "supabase",
+        });
+      }
+    }
+  } catch (err) {
+    console.error("Supabase fetch error, fallback to initial:", err);
+  }
+
+  // Fallback to INITIAL dataset if Supabase is initializing or empty
   return NextResponse.json({
     success: true,
     data: INITIAL,
     filterRw: rw || "ALL",
     timestamp: new Date().toISOString(),
+    source: "fallback_initial",
   });
 }
 
@@ -28,13 +73,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const newId = String(Math.floor(1000 + Math.random() * 9000));
     const newKasus = {
-      id: String(Math.floor(1000 + Math.random() * 9000)),
+      id: newId,
       name,
       age: age || "12 Tahun",
       nik: "317408" + Math.floor(1000000000 + Math.random() * 9000000000),
       rw,
-      address: `RT 01 / ${rw}, Kelurahan Manggarai`,
+      address: `RT 01 / ${rw}, Dukuh Sutorejo, Mulyorejo, Surabaya`,
       parent: "Orang Tua / Wali",
       phone: "0812-0000-0000",
       note: note || "Laporan baru terdaftar dari warga.",
@@ -44,6 +90,21 @@ export async function POST(request: Request) {
       statusAdvokasi: "baru",
       createdAt: new Date().toISOString(),
     };
+
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      await (supabase as any).from("kasus").insert([
+        {
+          id: newId,
+          inisial_anak: name,
+          wilayah_rw: rw,
+          detail_alamat: `RT 01 / ${rw}, Dukuh Sutorejo, Mulyorejo, Surabaya`,
+          penyebab_awal: "biaya",
+          deskripsi: note,
+          status: "baru",
+          pelapor_nama: reporter || "Warga / Relawan RW",
+        },
+      ]);
+    }
 
     return NextResponse.json({
       success: true,
@@ -68,6 +129,13 @@ export async function PUT(request: Request) {
         { success: false, error: "ID dan status baru wajib disertakan." },
         { status: 400 }
       );
+    }
+
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      await (supabase as any)
+        .from("kasus")
+        .update({ status: newStatus })
+        .eq("id", id);
     }
 
     return NextResponse.json({
