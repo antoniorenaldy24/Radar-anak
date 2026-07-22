@@ -159,13 +159,19 @@ export async function PUT(request: Request) {
       if (parent) updatePayload.nama_wali = parent;
       if (phone) updatePayload.no_phone = phone;
 
-      let query = (supabase as any).from("kasus").update(updatePayload);
-      if (dbUuid) {
-        query = query.eq("id", dbUuid);
-      } else {
-        query = query.eq("id", id);
+      const isUuid = (val?: string) =>
+        Boolean(val && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(val));
+
+      const targetId = isUuid(dbUuid) ? dbUuid : isUuid(id) ? id : null;
+
+      if (targetId) {
+        const { error } = await (supabase as any).from("kasus").update(updatePayload).eq("id", targetId);
+        if (error) console.error("Supabase update by ID error:", error);
+      } else if (name) {
+        // Fallback for short-coded IDs: match row by nama_lengkap_asli without passing non-UUID to UUID column
+        const { error } = await (supabase as any).from("kasus").update(updatePayload).eq("nama_lengkap_asli", name);
+        if (error) console.error("Supabase update by name error:", error);
       }
-      await query;
     }
 
     return NextResponse.json({

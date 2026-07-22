@@ -34,6 +34,7 @@ type ColKey = "baru" | "verifikasi" | "rujuk" | "selesai";
 
 export type Card = {
   id: string;
+  dbUuid?: string;
   name: string;
   age: string;
   nik?: string;
@@ -443,11 +444,12 @@ export function KanbanBoard() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id,
+        dbUuid: moved.dbUuid,
         newStatus: to,
-        name: extraData?.name,
-        address: extraData?.address,
-        parent: extraData?.parent,
-        phone: extraData?.phone,
+        name: extraData?.name || moved.name,
+        address: extraData?.address || moved.address,
+        parent: extraData?.parent || moved.parent,
+        phone: extraData?.phone || moved.phone,
       }),
     }).catch((err) => console.error("Failed to sync case move to API:", err));
 
