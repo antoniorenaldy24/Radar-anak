@@ -30,7 +30,7 @@ import {
 
 type MapPickerMod = typeof import("./MapPickerClient");
 
-type ColKey = "baru" | "verifikasi" | "rujuk" | "selesai";
+type ColKey = "baru" | "verifikasi" | "rujuk" | "selesai" | "ditutup";
 
 export type Card = {
   id: string;
@@ -49,6 +49,7 @@ export type Card = {
   rujukan?: string;
   buktiUrl?: string;
   catatanOperator?: string;
+  alasanDitutup?: string;
   fotoDokumentasiSelesai?: string;
   urgent?: boolean;
   verifiedAt?: string;
@@ -185,6 +186,23 @@ export const INITIAL: Record<ColKey, Card[]> = {
       lng: 112.7865,
     },
   ],
+  ditutup: [
+    {
+      id: "04-RM",
+      name: "Rian Maulana",
+      age: "16 Tahun",
+      nik: "3174081504090003",
+      rw: "RW 04",
+      address: "RT 04 / RW 04 No. 18, Sutorejo",
+      parent: "Suhardi (Ayah)",
+      phone: "0812-3344-5566",
+      note: "Telah dilakukan 3x mediasi & pelatihan motivasi oleh Tim KKN 34.",
+      reporter: "Kelompok-KKN",
+      kategoriAlasan: "Pekerja Anak / Membantu Orang Tua",
+      statusDokumen: "Advokasi Ditutup (Penolakan)",
+      alasanDitutup: "Keluarga & anak memutuskan bekerja penuh membantu toko kelontong orang tua.",
+    },
+  ],
 };
 
 const INITIAL_AUDIT_LOGS: AuditLog[] = [
@@ -286,6 +304,10 @@ export function KanbanBoard() {
   const [fotoBelajar, setFotoBelajar] = useState<string | null>(null);
   const [catatanSelesai, setCatatanSelesai] = useState("");
 
+  // Modal Outcome B: Closure due to Refusal (`verifikasi` / `rujuk` -> `ditutup`)
+  const [showDitutupModal, setShowDitutupModal] = useState<{ card: Card; fromCol: ColKey } | null>(null);
+  const [alasanDitutupText, setAlasanDitutupText] = useState("");
+
   // Form Add Case State
   const [newCase, setNewCase] = useState({
     name: "",
@@ -316,6 +338,7 @@ export function KanbanBoard() {
               verifikasi: json.data.verifikasi || [],
               rujuk: json.data.rujuk || [],
               selesai: json.data.selesai || [],
+              ditutup: json.data.ditutup || [],
             });
           }
         }
@@ -328,6 +351,7 @@ export function KanbanBoard() {
     if (from === "baru" && to === "verifikasi") return true;
     if (from === "verifikasi" && to === "rujuk") return true;
     if (from === "rujuk" && to === "selesai") return true;
+    if ((from === "verifikasi" || from === "rujuk") && to === "ditutup") return true;
     return false;
   };
 
@@ -382,6 +406,13 @@ export function KanbanBoard() {
 
     const targetCard = board[from].find((c) => c.id === id);
     if (!targetCard) return;
+
+    if ((from === "verifikasi" || from === "rujuk") && to === "ditutup") {
+      setAlasanDitutupText(targetCard.alasanDitutup || "Telah dilakukan mediasi & pelatihan, namun keluarga/anak memutuskan untuk tidak melanjutkan sekolah.");
+      setShowDitutupModal({ card: targetCard, fromCol: from });
+      setOverCol(null);
+      return;
+    }
 
     if (from === "baru" && to === "verifikasi") {
       setVerifyForm({
@@ -458,13 +489,15 @@ export function KanbanBoard() {
       verifikasi: "Diverifikasi",
       rujuk: "Dirujuk PKBM",
       selesai: "Selesai",
+      ditutup: "Advokasi Ditutup",
     };
 
-    const typeBadgeMap: Record<ColKey, "NEW" | "VERIFY" | "RUJUK" | "SELESAI"> = {
+    const typeBadgeMap: Record<ColKey, "NEW" | "VERIFY" | "RUJUK" | "SELESAI" | "DELETE"> = {
       baru: "NEW",
       verifikasi: "VERIFY",
       rujuk: "RUJUK",
       selesai: "SELESAI",
+      ditutup: "DELETE",
     };
 
     addAuditLog(
@@ -528,6 +561,21 @@ export function KanbanBoard() {
     setShowSelesaiModal(null);
     setDragCard(null);
     setFotoBelajar(null);
+  };
+
+  const handleDitutupSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showDitutupModal) return;
+
+    moveCardDirect(showDitutupModal.card.id, showDitutupModal.fromCol, "ditutup", {
+      alasanDitutup: alasanDitutupText || "Advokasi ditutup karena penolakan subjek/keluarga.",
+      catatanOperator: alasanDitutupText || "Advokasi ditutup karena penolakan subjek/keluarga.",
+      statusDokumen: "Advokasi Ditutup (Penolakan)",
+    });
+
+    setShowDitutupModal(null);
+    setDragCard(null);
+    setAlasanDitutupText("");
   };
 
   const handleCreateCaseSubmit = (e: React.FormEvent) => {
@@ -884,6 +932,85 @@ export function KanbanBoard() {
           );
         })}
       </div>
+
+      {/* OUTCOME B: FULL-WIDTH BOTTOM KANBAN ROW FOR CLOSED ADVOCACY CASES */}
+      <section
+        onDragOver={(e) => {
+          e.preventDefault();
+          setOverCol("ditutup");
+        }}
+        onDragLeave={() => setOverCol(null)}
+        onDrop={() => onDrop("ditutup")}
+        className={`border-2 border-dashed transition-all duration-200 p-5 bg-white shadow-[8px_8px_0_0_#121212] ${
+          overCol === "ditutup"
+            ? "border-rose-600 bg-rose-50/80 ring-2 ring-rose-500/20"
+            : "border-rose-300 bg-rose-50/30"
+        }`}
+      >
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-rose-200 pb-3 mb-4">
+          <div className="flex items-center gap-2">
+            <div className="grid size-6 place-items-center bg-rose-600 text-white font-mono text-xs font-black">
+              B
+            </div>
+            <div>
+              <h3 className="font-display text-base font-extrabold uppercase tracking-tight text-rose-950 flex items-center gap-2">
+                <span>OUTCOME B: ARSIP ADVOKASI DITUTUP (PENOLAKAN SUBJEK / KELUARGA)</span>
+              </h3>
+              <p className="text-[10px] font-mono text-rose-800/70">
+                Sektor penampung kasus di mana mediasi/pelatihan telah dilakukan namun anak/keluarga memilih tidak melanjutkan sekolah. (Tarik kartu dari kolom Diverifikasi atau Dirujuk ke sini)
+              </p>
+            </div>
+          </div>
+
+          <span className="font-mono text-[10px] font-bold text-rose-900 bg-rose-100 px-2.5 py-1 border border-rose-300">
+            {getFilteredCards(board["ditutup"] || []).length} KASUS DITUTUP
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 min-h-[90px]">
+          {getFilteredCards(board["ditutup"] || []).length === 0 ? (
+            <div className="col-span-full py-6 text-center text-rose-900/40 font-mono text-[10px] uppercase border border-dashed border-rose-200 bg-white/50">
+              [ Belum ada kasus penolakan yang diarsipkan — Tarik kartu dari Diverifikasi / Dirujuk ke sini jika mediasi buntu ]
+            </div>
+          ) : (
+            getFilteredCards(board["ditutup"] || []).map((c) => (
+              <div
+                key={c.id}
+                draggable
+                onDragStart={() => setDragCard({ id: c.id, from: "ditutup" })}
+                onClick={() => setSelectedCard(c)}
+                className="group relative cursor-pointer border border-ink/20 bg-paper p-3 transition-all duration-200 hover:-translate-y-1 hover:border-ink hover:shadow-[3px_3px_0_0_#121212] overflow-visible"
+              >
+                {/* TILTED VINTAGE RED STICKER AT TOP-RIGHT CORNER */}
+                <div className="absolute -top-2.5 -right-2.5 bg-signal text-white px-2 py-0.5 font-mono text-[8px] font-black uppercase shadow-sm transform rotate-6 border border-ink z-10 select-none">
+                  DITUTUP
+                </div>
+
+                <div className="flex items-start justify-between gap-1 pr-6">
+                  <span className="font-mono text-[8px] font-bold uppercase tracking-widest text-ink/40">
+                    #{c.id} &middot; {c.rw}
+                  </span>
+                </div>
+
+                <div className="mt-1 font-display text-xs font-extrabold text-ink group-hover:text-rose-600 transition-colors truncate">
+                  {c.name} ({c.age})
+                </div>
+
+                <p className="mt-1 text-[10px] text-ink/70 line-clamp-1 leading-tight font-sans">
+                  {c.alasanDitutup || c.note}
+                </p>
+
+                <div className="mt-2 border-t border-ledger/60 pt-1 font-mono text-[8px] text-ink/60 flex items-center justify-between">
+                  <span className="truncate">Wali: {c.parent || "Warga"}</span>
+                  <span className="font-bold text-rose-600 hover:underline shrink-0">
+                    Detail &rarr;
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
 
       {/* MODERN TECHNICAL AUDIT LOG SECTION */}
       <section className="border border-ink bg-white p-6 sm:p-8 shadow-[8px_8px_0_0_#121212]">
@@ -1332,67 +1459,89 @@ export function KanbanBoard() {
         </div>
       )}
 
-      {/* MODAL STEP 2: RUJUKAN & UPLOAD BUKTI (`verifikasi` -> `rujuk`) */}
+      {/* MODAL STEP 2: RUJUKAN & UPLOAD BUKTI (`verifikasi` -> `rujuk`) - ENLARGED LEGA LAYOUT */}
       {showProofModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/70 backdrop-blur-sm p-4 animate-[fade-up_0.2s_ease-out]">
-          <div className="relative w-full max-w-lg border-2 border-ink bg-white p-6 sm:p-8 shadow-[12px_12px_0_0_#0284c7]">
+          <div className="relative w-full max-w-4xl border-2 border-ink bg-white p-6 sm:p-8 shadow-[14px_14px_0_0_#0284c7] max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-ink pb-3 mb-4">
               <div className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-sky-600 flex items-center gap-1.5">
                 <FileUp className="size-4" />
-                <span>STEP 2: RUJUKAN PKBM &amp; UPLOAD BUKTI ({activeUsername})</span>
+                <span>STEP 2: FORMULIR TRANSISI STATUS DIRUJUK PKBM &amp; BUKTI FISIK ({activeUsername})</span>
               </div>
-              <button onClick={() => setShowProofModal(null)} className="grid size-7 place-items-center border border-ink bg-paper text-ink">
+              <button onClick={() => setShowProofModal(null)} className="grid size-7 place-items-center border border-ink bg-paper text-ink hover:bg-signal hover:text-white transition-colors">
                 <X className="size-4" />
               </button>
             </div>
 
-            <p className="text-xs text-ink/70 font-sans mb-4">
-              Menggeser kasus <strong>{showProofModal.card.name}</strong> ke status <span className="font-bold text-sky-600 uppercase">&ldquo;DIRUJUK PKBM&rdquo;</span> memerlukan data alur rujukan &amp; upload berkas bukti fisik (Foto/PDF).
+            <p className="text-xs text-ink/70 font-sans mb-6">
+              Menggeser kasus <strong>{showProofModal.card.name}</strong> ({showProofModal.card.rw}) ke status <span className="font-bold text-sky-600 uppercase">&ldquo;DIRUJUK PKBM&rdquo;</span>. Lengkapi data instansi rujukan, berkas bukti pendaftaran, dan catatan pendampingan operator.
             </p>
 
-            <form onSubmit={handleProofSubmit} className="space-y-4 font-mono text-xs">
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-ink/70">
-                  Alur Rujukan &amp; Nama Instansi PKBM *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={proofRujukan}
-                  onChange={(e) => setProofRujukan(e.target.value)}
-                  placeholder="Dirujuk ke PKBM Kejar Paket B Gelombang II"
-                  className="w-full border border-ink bg-paper p-2.5 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-sky-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-ink/70">
-                  Unggah Lampiran File Bukti Rujukan (Foto/PDF) *
-                </label>
-                <input
-                  type="file"
-                  onChange={(e) => setProofFile(e.target.files?.[0]?.name || "surat_rujukan_pkbm_01.pdf")}
-                  className="w-full border border-ink bg-paper p-2 text-xs text-ink cursor-pointer"
-                />
-                {proofFile && (
-                  <div className="mt-1 font-mono text-[10px] text-sky-600 font-bold">
-                    ✓ File Terpilih: {proofFile}
+            <form onSubmit={handleProofSubmit} className="space-y-6 font-mono text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* COLUMN LEFT: CHILD VERIFIED RECAP DATA */}
+                <div className="bg-[#f7f6f0] p-4 border border-ink/20 space-y-3">
+                  <div className="font-mono text-[10px] font-bold text-sky-950 uppercase border-b border-ink/10 pb-2">
+                    📋 REKAP DATA TERVERIFIKASI SUBJEK:
                   </div>
-                )}
-              </div>
+                  <div className="space-y-1.5 text-ink text-xs">
+                    <div><strong>NAMA:</strong> {showProofModal.card.name}</div>
+                    <div><strong>USIA:</strong> {showProofModal.card.age}</div>
+                    <div><strong>WILAYAH:</strong> {showProofModal.card.rw}</div>
+                    <div><strong>WALI:</strong> {showProofModal.card.parent || "Terverifikasi Door-to-Door"}</div>
+                    <div><strong>NO. WA:</strong> {showProofModal.card.phone || "-"}</div>
+                    {showProofModal.card.address && (
+                      <div><strong>ALAMAT:</strong> {showProofModal.card.address}</div>
+                    )}
+                  </div>
+                </div>
 
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-ink/70">
-                  Catatan Ringkas Operator *
-                </label>
-                <textarea
-                  rows={3}
-                  required
-                  value={proofCatatan}
-                  onChange={(e) => setProofCatatan(e.target.value)}
-                  placeholder="Contoh: Berkas rujukan PKBM Negeri 01 telah disetujui pengelola."
-                  className="w-full border border-ink bg-paper p-2.5 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-sky-600"
-                />
+                {/* COLUMN RIGHT: FORM INPUTS FOR PKBM & FILE UPLOAD */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-ink/70">
+                      Alur Rujukan &amp; Nama Instansi PKBM *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={proofRujukan}
+                      onChange={(e) => setProofRujukan(e.target.value)}
+                      placeholder="Contoh: Dirujuk ke PKBM Negeri 01 Gelombang II"
+                      className="w-full border border-ink bg-paper p-2.5 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-sky-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-ink/70">
+                      Unggah Lampiran File Bukti Rujukan (Foto / Scan Formulir) *
+                    </label>
+                    <input
+                      type="file"
+                      onChange={(e) => setProofFile(e.target.files?.[0]?.name || "surat_rujukan_pkbm_01.pdf")}
+                      className="w-full border border-ink bg-paper p-2 text-xs text-ink cursor-pointer"
+                    />
+                    {proofFile && (
+                      <div className="mt-1 font-mono text-[10px] text-sky-600 font-bold">
+                        ✓ File Terpilih: {proofFile}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider mb-1 text-ink/70">
+                      Catatan Ringkas Pendampingan Operator *
+                    </label>
+                    <textarea
+                      rows={3}
+                      required
+                      value={proofCatatan}
+                      onChange={(e) => setProofCatatan(e.target.value)}
+                      placeholder="Contoh: Berkas formulir pendaftaran PKBM Negeri 01 telah disetujui pengelola &amp; diajukan."
+                      className="w-full border border-ink bg-paper p-2.5 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-sky-600"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="mt-6 flex justify-end gap-3 border-t border-ledger pt-4">
@@ -1400,7 +1549,7 @@ export function KanbanBoard() {
                   Batal
                 </button>
                 <button type="submit" className="border border-ink bg-sky-600 px-6 py-2 font-bold uppercase text-white shadow-[2px_2px_0_0_#121212] hover:bg-ink">
-                  Konfirmasi &amp; Geser Status ({activeUsername})
+                  Simpan Status Rujukan PKBM ({activeUsername})
                 </button>
               </div>
             </form>
@@ -1463,6 +1612,52 @@ export function KanbanBoard() {
                 </button>
                 <button type="submit" className="border border-ink bg-emerald-600 px-6 py-2 font-bold uppercase text-white shadow-[2px_2px_0_0_#121212] hover:bg-ink">
                   Selesaikan Advokasi Kasus ({activeUsername})
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL OUTCOME B: ADVOKASI DITUTUP (PENOLAKAN SUBJEK / KELUARGA) */}
+      {showDitutupModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/70 backdrop-blur-sm p-4 animate-[fade-up_0.2s_ease-out]">
+          <div className="relative w-full max-w-xl border-2 border-ink bg-white p-6 sm:p-8 shadow-[12px_12px_0_0_#e11d48]">
+            <div className="flex items-center justify-between border-b border-ink pb-3 mb-4">
+              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-rose-600 flex items-center gap-1.5">
+                <AlertTriangle className="size-4" />
+                <span>OUTCOME B: ARSIP ADVOKASI DITUTUP ({activeUsername})</span>
+              </div>
+              <button onClick={() => setShowDitutupModal(null)} className="grid size-7 place-items-center border border-ink bg-paper text-ink hover:bg-signal hover:text-white transition-colors">
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-ink/70 font-sans mb-4">
+              Kasus <strong>{showDitutupModal.card.name}</strong> ({showDitutupModal.card.rw}) akan diarsipkan ke sektor <span className="font-bold text-rose-600 uppercase">&ldquo;ADVOKASI DITUTUP (PENOLAKAN)&rdquo;</span>.
+            </p>
+
+            <form onSubmit={handleDitutupSubmit} className="space-y-4 font-mono text-xs">
+              <div className="border-2 border-rose-600 bg-rose-50 p-4 space-y-2">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-rose-950 flex items-center gap-1">
+                  📝 Alasan Utama Advokasi Ditutup / Catatan Mediasi Terakhir *
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  value={alasanDitutupText}
+                  onChange={(e) => setAlasanDitutupText(e.target.value)}
+                  placeholder="Jelaskan hasil mediasi/pelatihan (misal: Telah dilakukan 3x mediasi &amp; konseling motivasi oleh Tim KKN 34, namun anak dan keluarga memutuskan untuk bekerja penuh membantu usaha toko kelontong orang tua)..."
+                  className="w-full border border-ink bg-white p-3 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-rose-600"
+                />
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3 border-t border-ledger pt-4">
+                <button type="button" onClick={() => setShowDitutupModal(null)} className="border border-ink bg-paper px-4 py-2 font-bold uppercase text-ink">
+                  Batal
+                </button>
+                <button type="submit" className="border border-ink bg-rose-600 px-6 py-2 font-bold uppercase text-white shadow-[2px_2px_0_0_#121212] hover:bg-ink">
+                  Simpan &amp; Arsipkan Penolakan ({activeUsername})
                 </button>
               </div>
             </form>
@@ -1709,6 +1904,18 @@ export function KanbanBoard() {
                 <div className="border-l-4 border-emerald-600 bg-emerald-50 p-3 font-mono text-[10px] uppercase">
                   <span className="font-bold text-emerald-900 block">Foto Dokumentasi Anak Belajar di PKBM:</span>
                   <span className="text-emerald-950 font-bold">📷 {selectedCard.fotoDokumentasiSelesai}</span>
+                </div>
+              )}
+
+              {selectedCard.alasanDitutup && (
+                <div className="border-l-4 border-rose-600 bg-rose-50 p-4 font-mono text-xs space-y-1">
+                  <div className="font-bold text-rose-950 uppercase flex items-center gap-1.5">
+                    <AlertTriangle className="size-4 text-rose-600" />
+                    <span>ALASAN UTAMA ADVOKASI DITUTUP / CATATAN MEDIASI TERAKHIR:</span>
+                  </div>
+                  <p className="text-rose-900 font-medium leading-relaxed font-sans text-xs">
+                    &ldquo;{selectedCard.alasanDitutup}&rdquo;
+                  </p>
                 </div>
               )}
 

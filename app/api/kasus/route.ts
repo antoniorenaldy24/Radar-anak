@@ -51,6 +51,7 @@ export async function GET(request: Request) {
           verifikasi: mappedData.filter((c: any) => c.statusAdvokasi === "verifikasi" || c.statusAdvokasi === "diverifikasi"),
           rujuk: mappedData.filter((c: any) => c.statusAdvokasi === "rujuk" || c.statusAdvokasi === "dirujuk"),
           selesai: mappedData.filter((c: any) => c.statusAdvokasi === "selesai"),
+          ditutup: mappedData.filter((c: any) => c.statusAdvokasi === "ditutup" || c.statusAdvokasi === "penolakan"),
         };
 
         return NextResponse.json({
@@ -143,7 +144,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, newStatus, dbUuid, name, address, parent, phone } = body;
+    const { id, newStatus, dbUuid, name, address, parent, phone, catatanAdvokasi, alasanDitutup } = body;
 
     if (!id || !newStatus) {
       return NextResponse.json(
@@ -158,6 +159,7 @@ export async function PUT(request: Request) {
       if (address) updatePayload.alamat_rt_rw = address;
       if (parent) updatePayload.nama_wali = parent;
       if (phone) updatePayload.no_phone = phone;
+      if (alasanDitutup || catatanAdvokasi) updatePayload.catatan_advokasi = alasanDitutup || catatanAdvokasi;
 
       const isUuid = (val?: string) =>
         Boolean(val && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(val));
