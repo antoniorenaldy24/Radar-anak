@@ -388,8 +388,8 @@ export function KanbanBoard() {
         name: targetCard.name,
         nik: targetCard.nik || "317408" + Math.floor(1000000000 + Math.random() * 9000000000),
         address: targetCard.address || `RT 02 / ${targetCard.rw}, Dukuh Sutorejo, Mulyorejo, Surabaya`,
-        parent: targetCard.parent || targetCard.reporter || "Orang Tua / Wali",
-        phone: targetCard.phone || "0812-0000-0000",
+        parent: targetCard.parent || "",
+        phone: targetCard.parent ? (targetCard.phone || "") : "",
         kategoriAlasan: targetCard.kategoriAlasan || KATEGORI_ALASAN_OPTIONS[0],
         statusDokumen: targetCard.statusDokumen || "Dokumen Kependudukan Lengkap",
         urgent: !!targetCard.urgent,
@@ -824,21 +824,32 @@ export function KanbanBoard() {
                       )}
 
                       <div className="mt-2.5 border-t border-ledger/80 pt-2 font-mono text-[9px] text-ink/80 space-y-0.5">
-                        <div className="flex items-center gap-1 font-bold text-ink">
-                          <User className="size-2.5 text-sky-600 shrink-0" />
-                          <span className="truncate">Wali/Pelapor: {c.parent || c.reporter}</span>
-                        </div>
-                        {c.phone && (
-                          <div className="flex items-center gap-1 text-emerald-800 font-bold">
-                            <Phone className="size-2.5 text-emerald-600 shrink-0" />
-                            <span>WA: {c.phone}</span>
+                        {col.key === "baru" ? (
+                          <div className="flex items-center gap-1 font-bold text-ink">
+                            <User className="size-2.5 text-sky-600 shrink-0" />
+                            <span className="truncate">
+                              Pelapor: {c.reporter} {c.phone && c.phone !== "-" ? `(${c.phone})` : ""}
+                            </span>
                           </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-1 font-bold text-ink">
+                              <User className="size-2.5 text-sky-600 shrink-0" />
+                              <span className="truncate">Wali: {c.parent || "Belum Ada Data Wali"}</span>
+                            </div>
+                            {c.phone && c.phone !== "-" && (
+                              <div className="flex items-center gap-1 text-emerald-800 font-bold">
+                                <Phone className="size-2.5 text-emerald-600 shrink-0" />
+                                <span>WA Wali: {c.phone}</span>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
 
                       <div className="mt-2 flex items-center justify-between border-t border-ledger pt-2 font-mono text-[9px] uppercase tracking-widest text-ink/50">
                         <span className="flex items-center gap-1 font-bold text-ink/70">
-                          Pelapor: {c.reporter}
+                          {col.key === "baru" ? "Baru Dilaporkan" : `Pelapor: ${c.reporter}`}
                         </span>
                         <span className="font-bold text-ink hover:underline">
                           Detail Berkas &rarr;
@@ -1709,7 +1720,11 @@ export function KanbanBoard() {
 
             <div className="mt-6 border-t border-ledger pt-4 flex items-center justify-between">
               <button
-                onClick={() => setShowDeleteModal(selectedCard)}
+                onClick={() => {
+                  const cardToDelete = selectedCard;
+                  setSelectedCard(null);
+                  setShowDeleteModal(cardToDelete);
+                }}
                 className="inline-flex items-center gap-1.5 border border-sky-400 bg-sky-50 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-sky-900 hover:bg-sky-600 hover:text-white transition-colors cursor-pointer"
               >
                 <Trash2 className="size-3.5" /> Hapus Laporan Palsu

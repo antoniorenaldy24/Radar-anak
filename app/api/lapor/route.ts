@@ -46,7 +46,7 @@ export async function POST(request: Request) {
           usia: age || "12 Tahun",
           rw: rw,
           alamat_rt_rw: fullAddress,
-          nama_wali: reporter || "Wali / Pelapor",
+          nama_wali: "",
           no_phone: phone || "-",
           akar_masalah: note || "Laporan temuan warga dari portal relawan.",
           catatan_advokasi: note || "Laporan temuan warga dari portal relawan.",
