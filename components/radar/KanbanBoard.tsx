@@ -296,8 +296,11 @@ export function KanbanBoard() {
   // Modal Step 2: Proof Upload Modal (`verifikasi` -> `rujuk`)
   const [showProofModal, setShowProofModal] = useState<{ card: Card; targetCol: ColKey } | null>(null);
   const [proofCatatan, setProofCatatan] = useState("");
-  const [proofFile, setProofFile] = useState<string | null>(null);
+  const [proofFile, setProofFile] = useState<{ name: string; objectUrl: string } | null>(null);
   const [proofRujukan, setProofRujukan] = useState("PKBM Kejar Paket B & Konseling Mandiri");
+
+  // Fullscreen image lightbox modal
+  const [imageLightboxUrl, setImageLightboxUrl] = useState<string | null>(null);
 
   // Modal Step 3: Friendly Simple Closure Modal (`rujuk` -> `selesai`)
   const [showSelesaiModal, setShowSelesaiModal] = useState<{ card: Card } | null>(null);
@@ -538,7 +541,8 @@ export function KanbanBoard() {
     moveCardDirect(showProofModal.card.id, "verifikasi", "rujuk", {
       rujukan: proofRujukan,
       catatanOperator: proofCatatan || "Berkas rujukan telah terverifikasi oleh operator.",
-      buktiUrl: proofFile || "surat_rujukan_pkbm_01.pdf",
+      // Store objectUrl so preview works in-session; name for display
+      buktiUrl: proofFile?.objectUrl || proofFile?.name || "surat_rujukan_pkbm_01.pdf",
       statusDokumen: "Surat Rujukan Terbit",
     });
 
@@ -1221,85 +1225,174 @@ export function KanbanBoard() {
                 </div>
               </div>
 
-              {/* RIGHT: Photo / Document Preview */}
-              <div className="space-y-3">
-                <div className="font-mono font-bold text-[10px] uppercase tracking-widest text-sky-600 border-b border-ink/10 pb-2">
-                  📸 PRATINJAU BUKTI FOTO / DOKUMEN
+              {/* RIGHT: Photo / Document Preview + Stamp */}
+              <div className="space-y-4">
+                {/* ── FOTO BUKTI SECTION ── */}
+                <div className="space-y-2">
+                  <div className="font-mono font-bold text-[10px] uppercase tracking-widest text-sky-600 border-b border-ink/10 pb-2">
+                    📸 PRATINJAU BUKTI FOTO / DOKUMEN
+                  </div>
+
+                  {showProofViewerModal.buktiUrl ? (
+                    <div className="border-2 border-sky-300 bg-[#f4f3ee] overflow-hidden">
+                      <div className="bg-sky-600 text-white px-3 py-1.5 font-mono text-[9px] font-bold uppercase flex items-center justify-between">
+                        <span>📄 BERKAS BUKTI RUJUKAN PKBM</span>
+                        <span className="bg-white/20 px-1.5 py-0.5">
+                          {(showProofViewerModal.buktiUrl.startsWith("blob:") || /\.(jpg|jpeg|png|gif|webp)$/i.test(showProofViewerModal.buktiUrl)) ? "GAMBAR" : "DOKUMEN"}
+                        </span>
+                      </div>
+
+                      {/* Direct use of buktiUrl as src - works for both blob: URLs and server paths */}
+                      {(showProofViewerModal.buktiUrl.startsWith("blob:") || /\.(jpg|jpeg|png|gif|webp)$/i.test(showProofViewerModal.buktiUrl)) ? (
+                        <div className="p-2 space-y-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={showProofViewerModal.buktiUrl}
+                            alt={`Bukti rujukan ${showProofViewerModal.name}`}
+                            className="w-full h-auto max-h-52 object-contain border border-ink/20"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setImageLightboxUrl(showProofViewerModal.buktiUrl!)}
+                            className="w-full border border-sky-600 bg-white text-sky-700 py-1.5 font-mono text-[9px] font-bold uppercase hover:bg-sky-600 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            🔍 Buka Ukuran Penuh (Lightbox)
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="p-6 flex flex-col items-center justify-center gap-3 text-center min-h-[120px]">
+                          <FileCheck className="size-10 text-sky-400" />
+                          <div className="font-mono text-xs font-bold text-ink">{showProofViewerModal.buktiUrl}</div>
+                          <div className="text-[10px] text-ink/60 font-mono uppercase">
+                            File PDF / Dokumen — Pratinjau tidak tersedia di browser.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="border border-dashed border-ink/20 bg-paper p-8 text-center text-ink/40 font-mono text-[10px] uppercase">
+                      [ Belum ada file bukti yang diunggah ]
+                    </div>
+                  )}
+
+                  {/* FOTO DOKUMENTASI SELESAI */}
+                  {showProofViewerModal.fotoDokumentasiSelesai && (
+                    <div className="border-2 border-emerald-300 bg-[#f4f3ee] overflow-hidden">
+                      <div className="bg-emerald-600 text-white px-3 py-1.5 font-mono text-[9px] font-bold uppercase">
+                        📷 FOTO DOKUMENTASI ANAK BELAJAR DI PKBM
+                      </div>
+                      {/\.(jpg|jpeg|png|gif|webp)$/i.test(showProofViewerModal.fotoDokumentasiSelesai) ? (
+                        <div className="p-2 space-y-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={showProofViewerModal.fotoDokumentasiSelesai.startsWith("blob:") ? showProofViewerModal.fotoDokumentasiSelesai : `/uploads/${showProofViewerModal.fotoDokumentasiSelesai}`}
+                            alt={`Dokumentasi ${showProofViewerModal.name} belajar di PKBM`}
+                            className="w-full h-auto max-h-52 object-contain border border-ink/20"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setImageLightboxUrl(showProofViewerModal.fotoDokumentasiSelesai!.startsWith("blob:") ? showProofViewerModal.fotoDokumentasiSelesai! : `/uploads/${showProofViewerModal.fotoDokumentasiSelesai!}`)}
+                            className="w-full border border-emerald-600 bg-white text-emerald-700 py-1.5 font-mono text-[9px] font-bold uppercase hover:bg-emerald-600 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            🔍 Buka Ukuran Penuh (Lightbox)
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="p-4 flex items-center gap-3 min-h-[60px]">
+                          <FileCheck className="size-6 text-emerald-400 shrink-0" />
+                          <div className="font-mono text-xs font-bold text-ink">{showProofViewerModal.fotoDokumentasiSelesai}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {/* BUKTI URL IMAGE PREVIEW */}
-                {showProofViewerModal.buktiUrl && (
-                  <div className="border-2 border-sky-300 bg-[#f4f3ee] overflow-hidden">
-                    <div className="bg-sky-600 text-white px-3 py-1 font-mono text-[9px] font-bold uppercase flex items-center justify-between">
-                      <span>📄 BERKAS BUKTI RUJUKAN PKBM</span>
-                      <span className="bg-white/20 px-1.5 py-0.5">
-                        {(showProofViewerModal.buktiUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i)) ? "GAMBAR" : "DOKUMEN"}
-                      </span>
+                {/* ── STEMPEL DIGITAL SECTION ── */}
+                <div className="space-y-2">
+                  <div className="font-mono font-bold text-[10px] uppercase tracking-widest text-ink border-b border-ink/10 pb-2">
+                    🪪 STEMPEL DIGITAL VERIFIKASI OPERATOR
+                  </div>
+                  <div className="border-2 border-ink bg-[#f4f3ee] overflow-hidden relative">
+                    {/* Decorative VALID watermark */}
+                    <div className="absolute -right-6 -bottom-6 opacity-[0.05] font-display text-8xl font-black uppercase tracking-tighter text-ink pointer-events-none select-none">
+                      VALID
                     </div>
-                    {/\.(jpg|jpeg|png|gif|webp)$/i.test(showProofViewerModal.buktiUrl) ? (
-                      <div className="p-2">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={`/uploads/${showProofViewerModal.buktiUrl}`}
-                          alt={`Bukti rujukan ${showProofViewerModal.name}`}
-                          className="w-full h-auto max-h-64 object-contain border border-ink/20"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).style.display = "none";
-                            (e.currentTarget.nextElementSibling as HTMLElement)!.style.display = "flex";
-                          }}
-                        />
-                        <div className="hidden items-center justify-center h-32 bg-ink/5 border border-ink/10 font-mono text-[10px] text-ink/50 uppercase">
-                          [ Pratinjau tidak tersedia — File: {showProofViewerModal.buktiUrl} ]
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-6 flex flex-col items-center justify-center gap-3 text-center min-h-[140px]">
-                        <FileCheck className="size-12 text-sky-400" />
-                        <div className="font-mono text-xs font-bold text-ink">{showProofViewerModal.buktiUrl}</div>
-                        <div className="text-[10px] text-ink/60 font-mono uppercase">
-                          File PDF / Dokumen — Pratinjau tidak tersedia di browser.<br />Silakan unduh untuk membuka.
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
 
-                {/* FOTO DOKUMENTASI SELESAI */}
-                {showProofViewerModal.fotoDokumentasiSelesai && (
-                  <div className="border-2 border-emerald-300 bg-[#f4f3ee] overflow-hidden">
-                    <div className="bg-emerald-600 text-white px-3 py-1 font-mono text-[9px] font-bold uppercase flex items-center justify-between">
-                      <span>📷 FOTO DOKUMENTASI ANAK BELAJAR DI PKBM</span>
+                    <div className="bg-ink text-paper px-4 py-2 font-mono text-[9px] font-bold uppercase flex items-center gap-2">
+                      <ShieldCheck className="size-3.5" />
+                      <span>BERKAS ADVOKASI RESMI TERVERIFIKASI</span>
+                      <span className="ml-auto bg-sky-500 text-white px-2 py-0.5 text-[8px]">✓ VALID</span>
                     </div>
-                    {/\.(jpg|jpeg|png|gif|webp)$/i.test(showProofViewerModal.fotoDokumentasiSelesai) ? (
-                      <div className="p-2">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={`/uploads/${showProofViewerModal.fotoDokumentasiSelesai}`}
-                          alt={`Dokumentasi ${showProofViewerModal.name} belajar di PKBM`}
-                          className="w-full h-auto max-h-64 object-contain border border-ink/20"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).style.display = "none";
-                            (e.currentTarget.nextElementSibling as HTMLElement)!.style.display = "flex";
-                          }}
-                        />
-                        <div className="hidden items-center justify-center h-32 bg-ink/5 border border-ink/10 font-mono text-[10px] text-ink/50 uppercase">
-                          [ Pratinjau tidak tersedia — File: {showProofViewerModal.fotoDokumentasiSelesai} ]
+
+                    <div className="p-4 space-y-3 font-mono text-[10px] relative z-10">
+                      {/* Header stamp row */}
+                      <div className="flex items-start justify-between pb-3 border-b border-ink/15">
+                        <div>
+                          <div className="font-bold text-ink text-xs uppercase">TIM KKN 34 — DUKUH SUTOREJO</div>
+                          <div className="text-ink/50 text-[9px] uppercase mt-0.5">Kelurahan Dukuh Sutorejo, Kec. Mulyorejo, Surabaya</div>
+                        </div>
+                        <div className="grid size-10 place-items-center bg-sky-600 text-white shrink-0 shadow-[2px_2px_0_0_#121212]">
+                          <ShieldCheck className="size-5" />
                         </div>
                       </div>
-                    ) : (
-                      <div className="p-4 flex items-center gap-3 min-h-[80px]">
-                        <FileCheck className="size-8 text-emerald-400 shrink-0" />
-                        <div className="font-mono text-xs font-bold text-ink">{showProofViewerModal.fotoDokumentasiSelesai}</div>
-                      </div>
-                    )}
-                  </div>
-                )}
 
-                {!showProofViewerModal.buktiUrl && !showProofViewerModal.fotoDokumentasiSelesai && (
-                  <div className="border border-dashed border-ink/20 bg-paper p-8 text-center text-ink/40 font-mono text-[10px] uppercase">
-                    [ Belum ada file bukti yang diunggah ]
+                      {/* Data rows */}
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px]">
+                        <div>
+                          <div className="text-ink/50 uppercase text-[8px]">ID KASUS</div>
+                          <div className="font-bold text-ink">#{showProofViewerModal.id}</div>
+                        </div>
+                        <div>
+                          <div className="text-ink/50 uppercase text-[8px]">NAMA SUBJEK</div>
+                          <div className="font-bold text-ink">{showProofViewerModal.name}</div>
+                        </div>
+                        <div>
+                          <div className="text-ink/50 uppercase text-[8px]">WILAYAH</div>
+                          <div className="font-bold text-ink">{showProofViewerModal.rw}</div>
+                        </div>
+                        <div>
+                          <div className="text-ink/50 uppercase text-[8px]">STATUS DOKUMEN</div>
+                          <div className="font-bold text-sky-600">{showProofViewerModal.statusDokumen || "Diverifikasi"}</div>
+                        </div>
+                        {showProofViewerModal.rujukan && (
+                          <div className="col-span-2">
+                            <div className="text-ink/50 uppercase text-[8px]">LEMBAGA RUJUKAN</div>
+                            <div className="font-bold text-ink">{showProofViewerModal.rujukan}</div>
+                          </div>
+                        )}
+                        {showProofViewerModal.kategoriAlasan && (
+                          <div className="col-span-2">
+                            <div className="text-ink/50 uppercase text-[8px]">KATEGORI ALASAN</div>
+                            <div className="font-bold text-ink">{showProofViewerModal.kategoriAlasan}</div>
+                          </div>
+                        )}
+                        <div>
+                          <div className="text-ink/50 uppercase text-[8px]">DIVERIFIKASI OLEH</div>
+                          <div className="font-bold text-ink">{showProofViewerModal.reporter}</div>
+                        </div>
+                      </div>
+
+                      {showProofViewerModal.catatanOperator && (
+                        <div className="border-t border-ink/15 pt-2">
+                          <div className="text-ink/50 uppercase text-[8px] mb-1">CATATAN RESMI OPERATOR:</div>
+                          <p className="text-ink/80 italic font-sans text-[10px] leading-relaxed">
+                            &ldquo;{showProofViewerModal.catatanOperator}&rdquo;
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Stamp footer */}
+                      <div className="border-t border-ink/15 pt-2 flex items-center justify-between text-[9px]">
+                        <div className="text-ink/50 uppercase">
+                          RADAR ANAK — SISTEM MANAJEMEN ADVOKASI
+                        </div>
+                        <div className="bg-sky-600 text-white px-2 py-0.5 font-bold uppercase text-[8px]">
+                          TERARSIP RESMI
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
             </div>
 
@@ -1629,12 +1722,23 @@ export function KanbanBoard() {
                     </label>
                     <input
                       type="file"
-                      onChange={(e) => setProofFile(e.target.files?.[0]?.name || "surat_rujukan_pkbm_01.pdf")}
+                      accept="image/*,.pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          // Revoke old object URL to avoid memory leak
+                          if (proofFile?.objectUrl) URL.revokeObjectURL(proofFile.objectUrl);
+                          setProofFile({ name: file.name, objectUrl: URL.createObjectURL(file) });
+                        }
+                      }}
                       className="w-full border border-ink bg-paper p-2 text-xs text-ink cursor-pointer"
                     />
                     {proofFile && (
-                      <div className="mt-1 font-mono text-[10px] text-sky-600 font-bold">
-                        ✓ File Terpilih: {proofFile}
+                      <div className="mt-1 font-mono text-[10px] text-sky-600 font-bold flex items-center gap-1.5">
+                        ✓ File Terpilih: {proofFile.name}
+                        {/\.(jpg|jpeg|png|gif|webp)$/i.test(proofFile.name) && (
+                          <span className="bg-sky-100 text-sky-700 px-1.5 py-0.5 text-[8px] uppercase">GAMBAR — PRATINJAU TERSEDIA</span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1878,7 +1982,7 @@ export function KanbanBoard() {
       {/* MODAL DETAIL RESMI DOSSIER OPERATOR */}
       {selectedCard && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/70 backdrop-blur-sm p-4 animate-[fade-up_0.2s_ease-out]">
-          <div className="relative w-full max-w-xl border-2 border-ink bg-white p-6 sm:p-8 shadow-[12px_12px_0_0_#0284c7] max-h-[90vh] overflow-y-auto">
+          <div className="relative w-full max-w-3xl border-2 border-ink bg-white p-6 sm:p-8 shadow-[12px_12px_0_0_#0284c7] max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-ink pb-4 mb-6">
               <div className="flex items-center gap-2">
                 <div className="grid size-7 place-items-center bg-sky-600 text-white">
@@ -2060,43 +2164,49 @@ export function KanbanBoard() {
                 </div>
               )}
 
+              {/* ─── BUKTI FISIK FOTO SECTION ─── */}
               {selectedCard.buktiUrl && (
                 <div className="border-2 border-sky-300 bg-[#f4f3ee] overflow-hidden font-mono text-xs">
-                  <div className="bg-sky-600 text-white px-3 py-1.5 font-bold uppercase text-[9px] flex items-center justify-between">
+                  <div className="bg-sky-600 text-white px-3 py-2 font-bold uppercase text-[9px] flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
-                      <FileCheck className="size-3.5" /> BUKTI FISIK RUJUKAN PKBM
+                      <FileCheck className="size-3.5" /> PRATINJAU BUKTI FOTO / DOKUMEN RUJUKAN PKBM
                     </span>
                     <button
                       type="button"
                       onClick={() => setShowProofViewerModal(selectedCard)}
                       className="border border-white/40 bg-white/20 text-white px-2 py-0.5 text-[8px] font-bold uppercase hover:bg-white hover:text-sky-900 cursor-pointer transition-colors"
                     >
-                      👁️ LIHAT PENUH
+                      📋 DETAIL PENUH
                     </button>
                   </div>
-                  {/\.(jpg|jpeg|png|gif|webp)$/i.test(selectedCard.buktiUrl) ? (
-                    <div className="p-2">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={`/uploads/${selectedCard.buktiUrl}`}
-                        alt={`Bukti rujukan ${selectedCard.name}`}
-                        className="w-full h-auto max-h-48 object-contain border border-ink/10"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display = "none";
-                          (e.currentTarget.nextElementSibling as HTMLElement)!.style.display = "flex";
-                        }}
-                      />
-                      <div className="hidden items-center justify-center h-24 bg-ink/5 font-mono text-[10px] text-ink/50 uppercase">
-                        [ Pratinjau tidak tersedia: {selectedCard.buktiUrl} ]
+                  {/* File name & info row */}
+                  <div className="px-3 py-2 bg-white border-b border-sky-100 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileCheck className="size-3.5 text-sky-600 shrink-0" />
+                      <span className="text-[10px] font-bold text-ink truncate">
+                        {/* Show original filename if it's an object URL, otherwise show buktiUrl directly */}
+                        {selectedCard.buktiUrl.startsWith("blob:") ? "Foto yang diunggah (sesi ini)" : selectedCard.buktiUrl}
+                      </span>
+                    </div>
+                    <span className="text-[8px] bg-sky-100 text-sky-700 px-2 py-0.5 font-bold uppercase shrink-0">TERVERIFIKASI</span>
+                  </div>
+                  {/* Preview area - only show button, no inline thumbnail */}
+                  <div className="p-4 flex items-center justify-center gap-4">
+                    {(/\.(jpg|jpeg|png|gif|webp)$/i.test(selectedCard.buktiUrl) || selectedCard.buktiUrl.startsWith("blob:")) ? (
+                      <button
+                        type="button"
+                        onClick={() => setImageLightboxUrl(selectedCard.buktiUrl!)}
+                        className="flex items-center gap-2 border-2 border-sky-600 bg-white text-sky-700 px-4 py-2.5 font-mono text-[10px] font-bold uppercase hover:bg-sky-600 hover:text-white transition-all cursor-pointer shadow-[2px_2px_0_0_#0284c7]"
+                      >
+                        🔍 Tampilkan Pratinjau Foto (Ukuran Maksimal)
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2 text-ink/50 font-mono text-[10px] uppercase">
+                        <FileCheck className="size-5 text-sky-300" />
+                        <span>File PDF / Dokumen — Klik &ldquo;Detail Penuh&rdquo; untuk melihat</span>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="p-4 flex flex-col items-center justify-center gap-2 text-center min-h-[80px]">
-                      <FileCheck className="size-8 text-sky-400" />
-                      <div className="font-bold text-ink text-[11px]">{selectedCard.buktiUrl}</div>
-                      <div className="text-[10px] text-ink/50 uppercase">File PDF / Dokumen — Klik "Lihat Penuh" untuk detail</div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                   {selectedCard.catatanOperator && (
                     <div className="px-3 pb-3">
                       <p className="text-ink/80 font-sans text-xs italic bg-white p-2 border border-sky-100">
@@ -2104,6 +2214,99 @@ export function KanbanBoard() {
                       </p>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* ─── STEMPEL DIGITAL VERIFIKASI OPERATOR SECTION ─── */}
+              {(selectedCard.buktiUrl || selectedCard.statusDokumen) && (
+                <div className="border-2 border-ink bg-[#f4f3ee] overflow-hidden font-mono text-xs">
+                  <div className="bg-ink text-paper px-3 py-2 font-bold uppercase text-[9px] flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <ShieldCheck className="size-3.5" /> STEMPEL DIGITAL VERIFIKASI OPERATOR
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowProofViewerModal(selectedCard)}
+                      className="border border-paper/40 bg-paper/20 text-paper px-2 py-0.5 text-[8px] font-bold uppercase hover:bg-paper hover:text-ink cursor-pointer transition-colors"
+                    >
+                      📋 LIHAT PENUH
+                    </button>
+                  </div>
+                  {/* Stamp card content */}
+                  <div className="p-4 relative overflow-hidden">
+                    {/* Watermark VALID */}
+                    <div className="absolute -right-4 -bottom-4 opacity-[0.06] font-display text-7xl font-black uppercase tracking-tighter text-ink pointer-events-none select-none">
+                      VALID
+                    </div>
+                    <div className="space-y-2 text-[10px] relative z-10">
+                      <div className="flex items-center gap-2 border-b border-ink/10 pb-2">
+                        <div className="grid size-6 place-items-center bg-sky-600 text-white shrink-0">
+                          <ShieldCheck className="size-3.5" />
+                        </div>
+                        <div>
+                          <div className="font-bold text-ink text-xs">BERKAS ADVOKASI RESMI TERVERIFIKASI</div>
+                          <div className="text-ink/50 text-[9px] uppercase">Tim KKN 34 — Kelurahan Dukuh Sutorejo</div>
+                        </div>
+                        <div className="ml-auto bg-sky-600 text-white px-2 py-0.5 text-[8px] font-bold uppercase shrink-0">
+                          ✓ VALID
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
+                        <div><span className="text-ink/50">ID KASUS:</span> <strong>#{selectedCard.id}</strong></div>
+                        <div><span className="text-ink/50">WILAYAH:</span> <strong>{selectedCard.rw}</strong></div>
+                        <div><span className="text-ink/50">SUBJEK:</span> <strong>{selectedCard.name}</strong></div>
+                        <div><span className="text-ink/50">STATUS:</span> <strong className="text-sky-600">{selectedCard.statusDokumen || "Diverifikasi"}</strong></div>
+                        {selectedCard.rujukan && (
+                          <div className="col-span-2"><span className="text-ink/50">RUJUKAN:</span> <strong>{selectedCard.rujukan}</strong></div>
+                        )}
+                        <div><span className="text-ink/50">OPERATOR:</span> <strong>{selectedCard.reporter}</strong></div>
+                        {selectedCard.verifiedAt && (
+                          <div><span className="text-ink/50">TGL VERIFIKASI:</span> <strong>{new Date(selectedCard.verifiedAt).toLocaleDateString("id-ID")}</strong></div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="px-4 py-2 bg-white border-t border-ink/10 flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowProofViewerModal(selectedCard)}
+                      className="flex items-center gap-2 border border-ink bg-paper text-ink px-4 py-2 font-mono text-[10px] font-bold uppercase hover:bg-ink hover:text-paper transition-all cursor-pointer shadow-[2px_2px_0_0_#121212]"
+                    >
+                      🪪 Tampilkan Stempel Digital Ukuran Penuh
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* FOTO DOKUMENTASI SELESAI - button based, no inline thumbnail */}
+              {selectedCard.fotoDokumentasiSelesai && (
+                <div className="border-2 border-emerald-300 bg-[#f4f3ee] overflow-hidden font-mono text-xs">
+                  <div className="bg-emerald-600 text-white px-3 py-2 font-bold uppercase text-[9px] flex items-center justify-between">
+                    <span>📷 FOTO DOKUMENTASI ANAK BELAJAR DI PKBM</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowProofViewerModal(selectedCard)}
+                      className="border border-white/40 bg-white/20 text-white px-2 py-0.5 text-[8px] font-bold uppercase hover:bg-white hover:text-emerald-900 cursor-pointer transition-colors"
+                    >
+                      📋 DETAIL PENUH
+                    </button>
+                  </div>
+                  <div className="p-4 flex items-center justify-center">
+                    {/\.(jpg|jpeg|png|gif|webp)$/i.test(selectedCard.fotoDokumentasiSelesai) ? (
+                      <button
+                        type="button"
+                        onClick={() => setImageLightboxUrl(selectedCard.fotoDokumentasiSelesai!.startsWith("blob:") ? selectedCard.fotoDokumentasiSelesai! : `/uploads/${selectedCard.fotoDokumentasiSelesai}`)}
+                        className="flex items-center gap-2 border-2 border-emerald-600 bg-white text-emerald-700 px-4 py-2.5 font-mono text-[10px] font-bold uppercase hover:bg-emerald-600 hover:text-white transition-all cursor-pointer shadow-[2px_2px_0_0_#059669]"
+                      >
+                        🔍 Tampilkan Foto Dokumentasi (Ukuran Maksimal)
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2 text-ink/50 font-mono text-[10px] uppercase">
+                        <FileCheck className="size-5 text-emerald-300" />
+                        <span>{selectedCard.fotoDokumentasiSelesai}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -2126,6 +2329,31 @@ export function KanbanBoard() {
               >
                 Tutup Berkas
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ─── FULLSCREEN IMAGE LIGHTBOX ─── */}
+      {imageLightboxUrl && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+          onClick={() => setImageLightboxUrl(null)}
+        >
+          <div className="relative max-w-full max-h-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setImageLightboxUrl(null)}
+              className="absolute -top-10 right-0 grid size-9 place-items-center border-2 border-white bg-black text-white hover:bg-white hover:text-black transition-colors cursor-pointer z-10"
+            >
+              <X className="size-5" strokeWidth={2.5} />
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageLightboxUrl}
+              alt="Pratinjau foto bukti ukuran penuh"
+              className="max-w-[90vw] max-h-[85vh] object-contain border-2 border-white shadow-2xl"
+            />
+            <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white font-mono text-[9px] text-center py-1 uppercase tracking-widest">
+              Klik di luar gambar atau tombol ✕ untuk menutup
             </div>
           </div>
         </div>
