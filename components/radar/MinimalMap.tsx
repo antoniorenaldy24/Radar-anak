@@ -62,23 +62,31 @@ export function MinimalMap() {
         ];
 
         if (verifiedCards.length > 0) {
+          const posOccurrences: Record<string, number> = {};
           const mappedSubjects: SubjectProfile[] = verifiedCards.map((c: any, index: number) => {
             const rwKey = Object.keys(RW_COORDS_MAP).find((k) => c.rw?.includes(k)) || "RW 04";
             const basePos = RW_COORDS_MAP[rwKey] || [-7.2635, 112.7890];
-            
-            // Prioritize exact custom Lat/Lng set by Operator in Verification Modal
-            const finalPos: [number, number] = c.lat && c.lng
-              ? [Number(c.lat), Number(c.lng)]
-              : basePos;
+
+            let finalPos: [number, number];
+            if (c.lat && c.lng) {
+              finalPos = [Number(c.lat), Number(c.lng)];
+            } else {
+              // Offset slightly for multiple cards in the same RW so markers don't overlap exactly
+              const count = posOccurrences[rwKey] || 0;
+              posOccurrences[rwKey] = count + 1;
+              const latOffset = ((count % 3) - 1) * 0.0008 + Math.floor(count / 3) * 0.0005;
+              const lngOffset = (count % 2 === 0 ? 1 : -1) * 0.0007 * (Math.floor(count / 2) + 1);
+              finalPos = [basePos[0] + latOffset, basePos[1] + lngOffset];
+            }
 
             return {
               id: c.id || String(index + 1),
               initials: getInitials(c.name),
               age: c.age || "12 Tahun",
               location: c.address || `${c.rw || "RW 04"}, Dukuh Sutorejo, Mulyorejo, Surabaya`,
-              dateLocked: new Date().toISOString().split("T")[0],
-              rootProblem: c.note || "Keterbatasan biaya dan kendala berkas sekolah.",
-              dream: c.dream || "Cita-cita: Ingin kembali bersekolah dan menggapai cita-cita.",
+              dateLocked: c.verifiedAt ? new Date(c.verifiedAt).toLocaleDateString("id-ID") : "Terverifikasi Lapangan",
+              rootProblem: c.kategoriAlasan || c.note || "Keterbatasan biaya dan kendala berkas sekolah.",
+              dream: c.note || "Cita-cita: Ingin kembali bersekolah dan menggapai cita-cita.",
               advocacyNote:
                 c.rujukan ||
                 c.catatanOperator ||
