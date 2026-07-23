@@ -30,30 +30,43 @@ export async function GET(request: Request) {
           const rawName = c.nama_lengkap_asli || c.inisial_publik || "Subjek";
           const shortId = c.id && c.id.length < 10 ? c.id : generateShortId(c.rw || "RW 04", rawName);
 
+          // Extract embedded JSON metadata if present in catatan_advokasi
+          let meta: any = {};
+          let cleanNote = c.catatan_advokasi || c.akar_masalah || "";
+          if (cleanNote.includes("__META__:")) {
+            try {
+              const parts = cleanNote.split("__META__:");
+              cleanNote = parts[0].trim();
+              meta = JSON.parse(parts[1]);
+            } catch (e) {
+              console.error("Meta parse error:", e);
+            }
+          }
+
           return {
             id: shortId,
             dbUuid: c.id,
             name: rawName,
             age: c.usia || "12 Tahun",
-            nik: c.nik || c.nik_subjek || "",
+            nik: meta.nik || c.nik || c.nik_subjek || "",
             rw: c.rw || "RW 04",
             address: c.alamat_rt_rw || "",
             parent: c.nama_wali || "",
             phone: c.no_phone || "",
-            note: c.catatan_advokasi || c.akar_masalah || "",
+            note: cleanNote || c.akar_masalah || "",
             reporter: c.pelapor || "Warga",
             statusAdvokasi: c.status_advokasi || "baru",
-            kategoriAlasan: c.kategori_alasan || "",
-            statusDokumen: c.status_dokumen || "",
-            rujukan: c.rujukan || "",
-            buktiUrl: c.bukti_url || "",
-            catatanOperator: c.catatan_operator || "",
-            alasanDitutup: c.alasan_ditutup || "",
-            fotoDokumentasiSelesai: c.foto_dokumentasi_selesai || "",
-            urgent: !!c.urgent,
-            verifiedAt: c.verified_at || c.created_at || "",
-            lat: typeof c.lat === "number" ? c.lat : undefined,
-            lng: typeof c.lng === "number" ? c.lng : undefined,
+            kategoriAlasan: meta.kategoriAlasan || c.kategori_alasan || "",
+            statusDokumen: meta.statusDokumen || c.status_dokumen || "",
+            rujukan: meta.rujukan || c.rujukan || "",
+            buktiUrl: meta.buktiUrl || c.bukti_url || "",
+            catatanOperator: meta.catatanOperator || c.catatan_operator || "",
+            alasanDitutup: meta.alasanDitutup || c.alasan_ditutup || "",
+            fotoDokumentasiSelesai: meta.fotoDokumentasiSelesai || c.foto_dokumentasi_selesai || "",
+            urgent: typeof meta.urgent === "boolean" ? meta.urgent : !!c.urgent,
+            verifiedAt: meta.verifiedAt || c.verified_at || c.created_at || "",
+            lat: typeof meta.lat === "number" ? meta.lat : typeof c.lat === "number" ? c.lat : undefined,
+            lng: typeof meta.lng === "number" ? meta.lng : typeof c.lng === "number" ? c.lng : undefined,
           };
         });
 
@@ -78,7 +91,7 @@ export async function GET(request: Request) {
     console.error("Supabase fetch error, fallback to initial:", err);
   }
 
-  // Fallback to INITIAL dataset if Supabase table is empty
+  // Fallback to empty dataset if Supabase table is empty
   return NextResponse.json({
     success: true,
     data: INITIAL,
@@ -179,6 +192,7 @@ export async function PUT(request: Request) {
       age,
       note,
       reporter,
+      verifiedAt,
     } = body;
 
     if (!id || !newStatus) {
@@ -189,23 +203,35 @@ export async function PUT(request: Request) {
     }
 
     if (isSupabaseConfigured()) {
-      const updatePayload: any = { status_advokasi: newStatus };
+      // Build safe metadata payload object
+      const metaObj = {
+        nik: nik || "",
+        statusDokumen: statusDokumen || "",
+        kategoriAlasan: kategoriAlasan || "",
+        rujukan: rujukan || "",
+        buktiUrl: buktiUrl || "",
+        catatanOperator: catatanOperator || "",
+        alasanDitutup: alasanDitutup || "",
+        fotoDokumentasiSelesai: fotoDokumentasiSelesai || "",
+        urgent: typeof urgent === "boolean" ? urgent : false,
+        verifiedAt: verifiedAt || new Date().toISOString(),
+        lat: typeof lat === "number" ? lat : undefined,
+        lng: typeof lng === "number" ? lng : undefined,
+      };
+
+      const baseNote = catatanOperator || catatanAdvokasi || note || "Advokasi diproses oleh operator.";
+      const combinedNote = `${baseNote} __META__:${JSON.stringify(metaObj)}`;
+
+      // Update ONLY columns that exist in schema.sql
+      const updatePayload: any = {
+        status_advokasi: newStatus,
+        catatan_advokasi: combinedNote,
+      };
+
       if (name) updatePayload.nama_lengkap_asli = name;
       if (address) updatePayload.alamat_rt_rw = address;
       if (parent) updatePayload.nama_wali = parent;
       if (phone) updatePayload.no_phone = phone;
-      if (alasanDitutup) updatePayload.alasan_ditutup = alasanDitutup;
-      if (catatanAdvokasi) updatePayload.catatan_advokasi = catatanAdvokasi;
-      if (catatanOperator) updatePayload.catatan_operator = catatanOperator;
-      if (rujukan) updatePayload.rujukan = rujukan;
-      if (buktiUrl) updatePayload.bukti_url = buktiUrl;
-      if (statusDokumen) updatePayload.status_dokumen = statusDokumen;
-      if (kategoriAlasan) updatePayload.kategori_alasan = kategoriAlasan;
-      if (nik) updatePayload.nik = nik;
-      if (fotoDokumentasiSelesai) updatePayload.foto_dokumentasi_selesai = fotoDokumentasiSelesai;
-      if (typeof urgent === "boolean") updatePayload.urgent = urgent;
-      if (typeof lat === "number") updatePayload.lat = lat;
-      if (typeof lng === "number") updatePayload.lng = lng;
 
       const isUuid = (val?: string) =>
         Boolean(val && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(val));
@@ -214,6 +240,7 @@ export async function PUT(request: Request) {
 
       let updateSuccess = false;
 
+      // 1. Try update by UUID primary key
       if (targetId) {
         const { data, error } = await (supabase as any)
           .from("kasus")
@@ -228,12 +255,13 @@ export async function PUT(request: Request) {
         }
       }
 
+      // 2. Fallback: Try update by case name (case-insensitive)
       if (!updateSuccess && name) {
-        // Fallback: match row by nama_lengkap_asli
+        const cleanName = name.trim();
         const { data, error } = await (supabase as any)
           .from("kasus")
           .update(updatePayload)
-          .eq("nama_lengkap_asli", name)
+          .ilike("nama_lengkap_asli", cleanName)
           .select();
 
         if (!error && data && data.length > 0) {
@@ -243,20 +271,35 @@ export async function PUT(request: Request) {
         }
       }
 
-      // Upsert Fallback: If card did not exist in Supabase DB (e.g. initial mock data card), insert it now!
-      if (!updateSuccess) {
+      // 3. Fallback 2: Try update by RW and first word of name
+      if (!updateSuccess && name && rw) {
+        const firstName = name.trim().split(" ")[0];
+        const { data, error } = await (supabase as any)
+          .from("kasus")
+          .update(updatePayload)
+          .eq("rw", rw)
+          .ilike("nama_lengkap_asli", `%${firstName}%`)
+          .select();
+
+        if (!error && data && data.length > 0) {
+          updateSuccess = true;
+        }
+      }
+
+      // 4. Upsert Fallback: If row was not found in DB, insert standard columns safely
+      if (!updateSuccess && name) {
         const insertPayload = {
-          inisial_publik: name && name.length > 2 ? name.substring(0, 1) + "." + name.substring(name.length - 1) : name || "Subjek",
-          nama_lengkap_asli: name || "Subjek",
+          inisial_publik: name.length > 2 ? name.substring(0, 1) + "." + name.substring(name.length - 1) : name,
+          nama_lengkap_asli: name,
           usia: age || "12 Tahun",
           rw: rw || "RW 04",
-          alamat_rt_rw: address || "RT 01 / RW 04, Dukuh Sutorejo",
+          alamat_rt_rw: address || `RT 01 / ${rw || "RW 04"}, Dukuh Sutorejo`,
           nama_wali: parent || "Orang Tua / Wali",
           no_phone: phone || "0812-0000-0000",
-          catatan_advokasi: note || catatanAdvokasi || "Advokasi diproses.",
+          akar_masalah: note || "Kendala biaya dan transportasi",
+          catatan_advokasi: combinedNote,
           status_advokasi: newStatus,
           pelapor: reporter || "Warga",
-          ...updatePayload,
         };
 
         const { error: insertErr } = await (supabase as any).from("kasus").insert([insertPayload]);
