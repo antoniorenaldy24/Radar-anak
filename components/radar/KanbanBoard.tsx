@@ -85,175 +85,27 @@ export const KATEGORI_ALASAN_OPTIONS = [
 ];
 
 export const INITIAL: Record<ColKey, Card[]> = {
-  baru: [
-    {
-      id: "03-LH",
-      name: "Lukman Hakim",
-      age: "12 Tahun",
-      rw: "RW 03",
-      note: "Terlihat mengumpulkan barang bekas jam sekolah bersama saudaranya.",
-      reporter: "RT04",
-      parent: "Bambang (Ayah)",
-      phone: "0812-9988-7711",
-    },
-    {
-      id: "04-PL",
-      name: "Putri Lestari",
-      age: "15 Tahun",
-      rw: "RW 04",
-      note: "Berhenti sekolah pasca lulus SMP karena kendala ongkos & biaya transportasi.",
-      reporter: "RW09",
-      parent: "Suratmi (Ibu)",
-      phone: "0857-1122-3344",
-    },
-  ],
-  verifikasi: [
-    {
-      id: "04-AR",
-      name: "Anisa Rahmawati",
-      age: "14 Tahun",
-      nik: "3174086101100004",
-      rw: "RW 04",
-      address: "RT 03 / RW 04 No. 09, Dukuh Sutorejo, Mulyorejo, Surabaya",
-      parent: "Rahmat (Ayah)",
-      phone: "0813-4455-6677",
-      note: "Bekerja membantu di warung keluarga sejak 6 bulan lalu.",
-      reporter: "Kelompok-KKN",
-      kategoriAlasan: "Pekerja Anak / Membantu Orang Tua",
-      statusDokumen: "KK Lengkap, Berkas Terverifikasi",
-      urgent: true,
-      lat: -7.2635,
-      lng: 112.7890,
-    },
-    {
-      id: "07-DK",
-      name: "Deni Kurniawan",
-      age: "10 Tahun",
-      nik: "3174082205140002",
-      rw: "RW 07",
-      address: "RT 02 / RW 07 No. 15, Sutorejo Indah, Surabaya",
-      parent: "Kusnadi (Ayah)",
-      phone: "0819-0011-2233",
-      note: "Data alamat & domisili terkonfirmasi valid oleh pengurus RT setempat.",
-      reporter: "RT04",
-      kategoriAlasan: "Faktor Ekonomi & Biaya Transportasi",
-      statusDokumen: "Dokumen Kependudukan Lengkap",
-      urgent: true,
-      lat: -7.2650,
-      lng: 112.7915,
-    },
-  ],
-  rujuk: [
-    {
-      id: "04-SW",
-      name: "Siti Wulandari",
-      age: "13 Tahun",
-      nik: "3174085107110001",
-      rw: "RW 04",
-      address: "RT 03 / RW 04 No. 24, Sutorejo Utara, Surabaya",
-      parent: "Wiyono (Ayah)",
-      phone: "0812-7788-9900",
-      note: "Terendap kendala biaya seragam & trauma perundungan sekolah lama.",
-      reporter: "Kelompok-KKN",
-      kategoriAlasan: "Trauma Perundungan / Bullying",
-      statusDokumen: "Surat Rujukan Terbit",
-      rujukan: "Dirujuk ke PKBM Kejar Paket B & Konseling Mandiri",
-      catatanOperator: "Surat rekomendasi KKN 34 & PKBM Negeri 01 diserahkan.",
-      buktiUrl: "surat_rujukan_pkbm_1039.pdf",
-      lat: -7.2630,
-      lng: 112.7885,
-    },
-  ],
-  selesai: [
-    {
-      id: "03-BS",
-      name: "Budi Santoso Jr.",
-      age: "11 Tahun",
-      nik: "3174081902130009",
-      rw: "RW 03",
-      address: "RT 01 / RW 03 No. 05, Dukuh Sutorejo, Surabaya",
-      parent: "Sutrisno (Ayah)",
-      phone: "0818-6677-8899",
-      note: "Berhasil kembali bersekolah di SMPN 12. Monitoring berkala 3 bulan.",
-      reporter: "Operator-Kelurahan",
-      kategoriAlasan: "Faktor Ekonomi & Biaya Transportasi",
-      statusDokumen: "Aktif Kembali Bersekolah",
-      rujukan: "Kasus Selesai — Pembina Monitoring",
-      catatanOperator: "Anak telah aktif belajar kelas 6 di PKBM Negeri 01.",
-      buktiUrl: "sk_dapodik_smpn12_0988.pdf",
-      fotoDokumentasiSelesai: "foto_budi_belajar_pkbm.jpg",
-      lat: -7.2612,
-      lng: 112.7865,
-    },
-  ],
-  ditutup: [
-    {
-      id: "04-RM",
-      name: "Rian Maulana",
-      age: "16 Tahun",
-      nik: "3174081504090003",
-      rw: "RW 04",
-      address: "RT 04 / RW 04 No. 18, Sutorejo",
-      parent: "Suhardi (Ayah)",
-      phone: "0812-3344-5566",
-      note: "Telah dilakukan 3x mediasi & pelatihan motivasi oleh Tim KKN 34.",
-      reporter: "Kelompok-KKN",
-      kategoriAlasan: "Pekerja Anak / Membantu Orang Tua",
-      statusDokumen: "Advokasi Ditutup (Penolakan)",
-      alasanDitutup: "Keluarga & anak memutuskan bekerja penuh membantu toko kelontong orang tua.",
-    },
-  ],
+  baru: [],
+  verifikasi: [],
+  rujuk: [],
+  selesai: [],
+  ditutup: [],
 };
 
-const INITIAL_AUDIT_LOGS: AuditLog[] = [
-  {
-    id: "LOG-901",
-    timestamp: "22 Jul 2026, 15:45 WIB",
-    timestampRaw: 1784683500000,
-    caseId: "1039",
-    caseName: "Siti Wulandari",
-    action: "Dipindahkan dari 'Diverifikasi' ➔ 'Dirujuk PKBM'",
-    byUsername: "Kelompok-KKN",
-    typeBadge: "RUJUK",
-  },
-  {
-    id: "LOG-900",
-    timestamp: "22 Jul 2026, 14:20 WIB",
-    timestampRaw: 1784678400000,
-    caseId: "1042",
-    caseName: "Deni Kurniawan",
-    action: "Hasil survei door-to-door valid, status diubah ke 'Diverifikasi'",
-    byUsername: "RT04",
-    typeBadge: "VERIFY",
-  },
-  {
-    id: "LOG-899",
-    timestamp: "22 Jul 2026, 11:15 WIB",
-    timestampRaw: 1784667300000,
-    caseId: "1045",
-    caseName: "Lukman Hakim",
-    action: "Laporan temuan baru terdaftar dari warga RW 03",
-    byUsername: "RT04",
-    typeBadge: "NEW",
-  },
-  {
-    id: "LOG-898",
-    timestamp: "21 Jul 2026, 16:30 WIB",
-    timestampRaw: 1784599800000,
-    caseId: "0988",
-    caseName: "Budi Santoso Jr.",
-    action: "Status advokasi tuntas, terdaftar resmi di DAPODIK",
-    byUsername: "Operator-Kelurahan",
-    typeBadge: "SELESAI",
-  },
-];
+const INITIAL_AUDIT_LOGS: AuditLog[] = [];
 
 export function KanbanBoard() {
   const hydrated = useHydrated();
   const [PickerMod, setPickerMod] = useState<MapPickerMod["default"] | null>(null);
 
-  const [board, setBoard] = useState(INITIAL);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
+  const [board, setBoard] = useState<Record<ColKey, Card[]>>({
+    baru: [],
+    verifikasi: [],
+    rujuk: [],
+    selesai: [],
+    ditutup: [],
+  });
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   // Sorting & Filtering States
   const [logSortField, setLogSortField] = useState<"time" | "name" | "status">("time");
@@ -338,17 +190,13 @@ export function KanbanBoard() {
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.data) {
-          // If Supabase returned live cards, populate Kanban board
-          const hasAnyCards = Object.values(json.data).some((list: any) => list && list.length > 0);
-          if (hasAnyCards) {
-            setBoard({
-              baru: json.data.baru || [],
-              verifikasi: json.data.verifikasi || [],
-              rujuk: json.data.rujuk || [],
-              selesai: json.data.selesai || [],
-              ditutup: json.data.ditutup || [],
-            });
-          }
+          setBoard({
+            baru: json.data.baru || [],
+            verifikasi: json.data.verifikasi || [],
+            rujuk: json.data.rujuk || [],
+            selesai: json.data.selesai || [],
+            ditutup: json.data.ditutup || [],
+          });
         }
       })
       .catch((err) => console.error("Failed to fetch live cases for Kanban:", err));
@@ -786,12 +634,16 @@ export function KanbanBoard() {
                 onChange={(e) => setSelectedRwFilter(e.target.value)}
                 className="bg-transparent text-ink focus:outline-none cursor-pointer"
               >
-                <option value="ALL">SEMUA RW (ALL)</option>
+                <option value="ALL">SEMUA RW (ALL 01-09)</option>
+                <option value="RW 01">RW 01</option>
+                <option value="RW 02">RW 02</option>
                 <option value="RW 03">RW 03</option>
                 <option value="RW 04">RW 04</option>
+                <option value="RW 05">RW 05</option>
+                <option value="RW 06">RW 06</option>
                 <option value="RW 07">RW 07</option>
+                <option value="RW 08">RW 08</option>
                 <option value="RW 09">RW 09</option>
-                <option value="RW 12">RW 12</option>
               </select>
             </div>
 
@@ -1894,11 +1746,15 @@ export function KanbanBoard() {
                     onChange={(e) => setNewCase({ ...newCase, rw: e.target.value })}
                     className="w-full border border-ink bg-paper p-2.5 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-sky-600"
                   >
+                    <option value="RW 01">RW 01 Sutorejo Tengah</option>
+                    <option value="RW 02">RW 02 Sutorejo Timur</option>
                     <option value="RW 03">RW 03 Dukuh Sutorejo</option>
                     <option value="RW 04">RW 04 Sutorejo Utara</option>
+                    <option value="RW 05">RW 05 Sutorejo Selatan</option>
+                    <option value="RW 06">RW 06 Sutorejo Barat</option>
                     <option value="RW 07">RW 07 Sutorejo Indah</option>
+                    <option value="RW 08">RW 08 Sutorejo Asri</option>
                     <option value="RW 09">RW 09 Mulyorejo Permai</option>
-                    <option value="RW 12">RW 12 Kalijudan</option>
                   </select>
                 </div>
               </div>

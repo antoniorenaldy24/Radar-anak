@@ -20,25 +20,14 @@ type RwRow = {
   update: string;
 };
 
-const DEFAULT_CAUSES: CauseStat[] = [
-  { cause: "Kendala Biaya Seragam & Operasional (Ekonomi)", pct: 43, count: "3 Kasus", rw: "RW 04, RW 07" },
-  { cause: "Trauma Perundungan / Bullying di Sekolah Lama", pct: 28, count: "2 Kasus", rw: "RW 04" },
-  { cause: "Kendala Dokumen Administrasi (KK / Akta Belum Terbit)", pct: 15, count: "1 Kasus", rw: "RW 09" },
-  { cause: "Kendala Migrasi Tempat Tinggal & Akses Lokasi", pct: 14, count: "1 Kasus", rw: "RW 12" },
-];
+const DEFAULT_CAUSES: CauseStat[] = [];
 
-const DEFAULT_RW_ROWS: RwRow[] = [
-  { rw: "RW 03 Dukuh Sutorejo", dapodik: "0 Anak", temuan: "1 Anak", status: "Baru Dilaporkan", update: "2026-07-22" },
-  { rw: "RW 04 Sutorejo Utara", dapodik: "0 Anak", temuan: "3 Anak", status: "Dalam Advokasi PKBM", update: "2026-07-22" },
-  { rw: "RW 07 Sutorejo Indah", dapodik: "0 Anak", temuan: "2 Anak", status: "Proses Beasiswa PIP", update: "2026-07-20" },
-  { rw: "RW 09 Mulyorejo Permai", dapodik: "0 Anak", temuan: "1 Anak", status: "Pengurusan Dukcapil", update: "2026-07-18" },
-  { rw: "RW 12 Kalijudan", dapodik: "0 Anak", temuan: "1 Anak", status: "PKBM Gelombang II", update: "2026-07-15" },
-];
+const DEFAULT_RW_ROWS: RwRow[] = [];
 
 export default function TransparansiPage() {
   const [loading, setLoading] = useState(false);
-  const [totalCount, setTotalCount] = useState<number>(7);
-  const [rujukPct, setRujukPct] = useState<number>(85);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [rujukPct, setRujukPct] = useState<number>(0);
   const [causeStats, setCauseStats] = useState<CauseStat[]>(DEFAULT_CAUSES);
   const [rwRows, setRwRows] = useState<RwRow[]>(DEFAULT_RW_ROWS);
 
@@ -61,15 +50,15 @@ export default function TransparansiPage() {
           ...(json.data.ditutup || []),
         ];
 
-        if (allCards.length > 0) {
-          setTotalCount(allCards.length);
+        setTotalCount(allCards.length);
 
+        if (allCards.length > 0) {
           const resolvedCards = [
             ...(json.data.rujuk || []),
             ...(json.data.selesai || []),
           ];
           const calculatedRujukPct = Math.round((resolvedCards.length / allCards.length) * 100);
-          setRujukPct(calculatedRujukPct || 85);
+          setRujukPct(calculatedRujukPct || 0);
 
           const categoryGroup: Record<string, { count: number; rws: Set<string> }> = {};
           allCards.forEach((c) => {
@@ -95,7 +84,7 @@ export default function TransparansiPage() {
           computedCauses.sort((a, b) => b.pct - a.pct);
           setCauseStats(computedCauses);
 
-          const rwKeys = ["RW 03", "RW 04", "RW 07", "RW 09", "RW 12"];
+          const rwKeys = ["RW 01", "RW 02", "RW 03", "RW 04", "RW 05", "RW 06", "RW 07", "RW 08", "RW 09"];
           const computedRwRows: RwRow[] = rwKeys.map((rwKey) => {
             const cardsInRw = allCards.filter((c) => c.rw?.includes(rwKey));
             const countInRw = cardsInRw.length;
@@ -122,6 +111,19 @@ export default function TransparansiPage() {
           });
 
           setRwRows(computedRwRows);
+        } else {
+          // Zero cards in DB
+          setRujukPct(0);
+          setCauseStats([]);
+          const rwKeys = ["RW 01", "RW 02", "RW 03", "RW 04", "RW 05", "RW 06", "RW 07", "RW 08", "RW 09"];
+          const emptyRwRows: RwRow[] = rwKeys.map((rwKey) => ({
+            rw: `${rwKey} Dukuh Sutorejo`,
+            dapodik: "0 Anak",
+            temuan: "0 Anak",
+            status: "Tidak Ada Temuan",
+            update: new Date().toISOString().split("T")[0],
+          }));
+          setRwRows(emptyRwRows);
         }
       }
     } catch (err) {

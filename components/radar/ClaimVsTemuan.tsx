@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 
 const BARS = [
+  { rw: "RW 03", n: 1 },
   { rw: "RW 04", n: 3 },
   { rw: "RW 07", n: 2 },
   { rw: "RW 09", n: 1 },
-  { rw: "RW 12", n: 1 },
 ];
 
 function useInView<T extends HTMLElement>(threshold = 0.2) {
@@ -169,8 +169,8 @@ export function ClaimVsTemuan() {
                 </div>
 
                 <p className="mt-4 text-xs leading-relaxed text-paper/60 font-medium">
-                  Konsentrasi terbesar di RW 04 (3 kasus), disusul RW 07 (2), RW
-                  09 (1), dan RW 12 (1). Mayoritas diakibatkan faktor ekonomi &amp;
+                  Konsentrasi terbesar di RW 04 (3 kasus), disusul RW 07 (2 kasus), RW
+                  03 (1 kasus), dan RW 09 (1 kasus). Mayoritas diakibatkan faktor ekonomi &amp;
                   akses sekolah.
                 </p>
               </div>

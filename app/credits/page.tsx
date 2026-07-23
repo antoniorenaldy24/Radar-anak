@@ -45,7 +45,7 @@ const NARRATIVES = [
     kicker: "03 · Lokasi",
     title: "Kelurahan Dukuh Sutorejo",
     body:
-      "Pengabdian dilaksanakan di Kelurahan Dukuh Sutorejo, Kec. Mulyorejo, Surabaya, Jawa Timur bersama warga, ketua RT/RW, kader posyandu, dan mitra kelurahan. Lima wilayah RW menjadi titik uji awal sistem: RW 03, RW 04, RW 07, RW 09, dan RW 12.",
+      "Pengabdian dilaksanakan di Kelurahan Dukuh Sutorejo, Kec. Mulyorejo, Surabaya, Jawa Timur bersama warga, ketua RT/RW, kader posyandu, dan mitra kelurahan yang mencakup 9 wilayah RW resmi (RW 01 s/d RW 09).",
   },
   {
     kicker: "04 · Terima Kasih",

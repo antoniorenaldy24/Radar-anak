@@ -225,11 +225,15 @@ export default function RelawanPage() {
                     onChange={(e) => setRw(e.target.value)}
                     className="w-full border border-ink bg-paper px-3.5 py-2.5 font-mono text-xs text-ink focus:outline-none focus:ring-2 focus:ring-signal"
                   >
+                    <option value="RW 01">RW 01 Sutorejo Tengah</option>
+                    <option value="RW 02">RW 02 Sutorejo Timur</option>
                     <option value="RW 03">RW 03 Dukuh Sutorejo</option>
                     <option value="RW 04">RW 04 Sutorejo Utara</option>
+                    <option value="RW 05">RW 05 Sutorejo Selatan</option>
+                    <option value="RW 06">RW 06 Sutorejo Barat</option>
                     <option value="RW 07">RW 07 Sutorejo Indah</option>
+                    <option value="RW 08">RW 08 Sutorejo Asri</option>
                     <option value="RW 09">RW 09 Mulyorejo Permai</option>
-                    <option value="RW 12">RW 12 Kalijudan</option>
                   </select>
                 </div>
 
